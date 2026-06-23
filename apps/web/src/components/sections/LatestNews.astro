@@ -1,0 +1,96 @@
+---
+import NewsCard from '../NewsCard.astro';
+import { loadQuery } from '../../sanity/lib/load-query';
+
+interface Props {
+  section: any;
+  headingLevel: string;
+}
+
+const { section, headingLevel } = Astro.props;
+const HeadingTag = headingLevel as any;
+
+const heading = section.heading || 'Latest News';
+const ctaLabel = section.ctaLabel || '';
+const ctaHref = section.ctaHref || '';
+
+// Clamp limit to a safe integer 1..12 (default 3). Schema validation
+// already constrains this, but defensive in case of legacy/unset data.
+const limitRaw = section.limit;
+const limit =
+  Number.isInteger(limitRaw) && limitRaw >= 1 && limitRaw <= 12 ? limitRaw : 3;
+
+const { data: news } = await loadQuery<any[]>({
+  query: `*[_type == "news"] | order(featured desc, date desc)[0...${limit}] {
+    _id,
+    title,
+    slug,
+    date,
+    summary,
+    featured,
+    image
+  }`,
+});
+---
+
+{news && news.length > 0 && (
+  <section class="ln-section">
+    <div class="ln-section__container">
+      <HeadingTag class="ln-section__heading">{heading}</HeadingTag>
+      <div class="ln-section__grid">
+        {news.map((article: any) => (
+          <NewsCard article={article} />
+        ))}
+      </div>
+      {ctaLabel && ctaHref && (
+        <div class="ln-section__footer">
+          <a href={ctaHref} class="btn btn--secondary">{ctaLabel} &rarr;</a>
+        </div>
+      )}
+    </div>
+  </section>
+)}
+
+<style>
+  .ln-section {
+    padding: var(--space-20) 0;
+    background-color: var(--neutral-new-50);
+  }
+
+  .ln-section__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+    padding: 0 var(--container-padding);
+  }
+
+  .ln-section__heading {
+    margin: 0 0 var(--space-10);
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: var(--neutral-new-900);
+    text-align: center;
+  }
+
+  .ln-section__grid {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: 1fr;
+  }
+
+  .ln-section__footer {
+    text-align: center;
+    margin-top: var(--space-10);
+  }
+
+  @media (min-width: 48rem) {
+    .ln-section__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .ln-section__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

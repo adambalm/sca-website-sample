@@ -1,0 +1,812 @@
+---
+/**
+ * Block Library — internal reference page (NOT authenticated).
+ *
+ * Demonstrates every page-builder section block on a single page with a
+ * realistic sample payload, file paths, and short illustrative excerpts.
+ * The URL is noindex but the page is reachable by anyone with the link;
+ * full schema/renderer source code is intentionally not rendered here.
+ */
+export const prerender = true
+
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import HeroSection from '../../components/sections/HeroSection.astro'
+import TextWithImage from '../../components/sections/TextWithImage.astro'
+import CardGrid from '../../components/sections/CardGrid.astro'
+import CtaBanner from '../../components/sections/CtaBanner.astro'
+import RichTextSection from '../../components/sections/RichTextSection.astro'
+import StatsRow from '../../components/sections/StatsRow.astro'
+import TestimonialBlock from '../../components/sections/TestimonialBlock.astro'
+import AccordionSection from '../../components/sections/AccordionSection.astro'
+import UpcomingEvents from '../../components/sections/UpcomingEvents.astro'
+import LatestNews from '../../components/sections/LatestNews.astro'
+import VideoEmbed from '../../components/sections/VideoEmbed.astro'
+
+interface BlockEntry {
+  id: string
+  label: string
+  tagline: string
+  Component: any
+  sample: any
+  schemaPath: string
+  rendererPath: string
+  registeredOn: string[]
+  schemaExcerpt: string
+  rendererExcerpt: string
+  notes?: string
+}
+
+const blocks: BlockEntry[] = [
+  {
+    id: 'hero-section',
+    label: 'Hero Section',
+    tagline: 'Full-bleed page header with optional eyebrow, heading, subtitle, and CTAs.',
+    Component: HeroSection,
+    sample: {
+      _type: 'heroSection',
+      _key: 'demo-hero',
+      eyebrow: 'Welcome',
+      heading: 'Discover Academic Excellence',
+      subtitle:
+        'A demonstration hero with no Sanity image attached — production heroes use the school’s photography library.',
+      overlayOpacity: 40,
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/heroSection.ts',
+    rendererPath: 'apps/web/src/components/sections/HeroSection.astro',
+    registeredOn: ['page', 'program', 'homepageConfig'],
+    schemaExcerpt: `name: 'heroSection',
+fields: [
+  defineField({ name: 'eyebrow', type: 'string' }),
+  defineField({ name: 'heading', type: 'string', validation: r => r.required() }),
+  defineField({ name: 'subtitle', type: 'text' }),
+  defineField({ name: 'image', type: 'image', options: { hotspot: true } }),
+  defineField({ name: 'primaryCta', type: 'object', fields: [...] }),
+]`,
+    rendererExcerpt: `<PageHero image={section.image} overlayOpacity={opacity}>
+  {section.eyebrow && <p class="hero-section__eyebrow">{section.eyebrow}</p>}
+  <HeadingTag class="hero-section__heading">{section.heading}</HeadingTag>
+  {section.subtitle && <p class="hero-section__subtitle">{section.subtitle}</p>}
+</PageHero>`,
+    notes: 'First heroSection on a page receives <h1>; subsequent headings use <h2>.',
+  },
+  {
+    id: 'rich-text',
+    label: 'Rich Text',
+    tagline: 'Long-form prose. Editor formats with bold, italic, links, lists, headings.',
+    Component: RichTextSection,
+    sample: {
+      _type: 'richText',
+      _key: 'demo-richtext',
+      heading: 'About Springfield Commonwealth',
+      maxWidth: 'narrow',
+      content: [
+        {
+          _type: 'block',
+          _key: 'p1',
+          style: 'normal',
+          children: [
+            {
+              _type: 'span',
+              _key: 's1',
+              text: 'This is a sample rich-text block. In production, an editor types this paragraph in the Sanity Studio with a familiar formatting toolbar — bold, italic, links, headings, and bullet lists.',
+            },
+          ],
+        },
+        {
+          _type: 'block',
+          _key: 'p2',
+          style: 'normal',
+          children: [
+            {
+              _type: 'span',
+              _key: 's2',
+              text: 'The Width control on this block lets editors choose a narrow column for readability or a wide column for reference content.',
+            },
+          ],
+        },
+      ],
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/richText.ts',
+    rendererPath: 'apps/web/src/components/sections/RichTextSection.astro',
+    registeredOn: ['page', 'program', 'homepageConfig'],
+    schemaExcerpt: `name: 'richText',
+fields: [
+  defineField({ name: 'heading', type: 'string' }),
+  defineField({ name: 'maxWidth', type: 'string',
+    options: { list: ['narrow', 'wide', 'full'] } }),
+  defineField({ name: 'content', type: 'array',
+    of: [{ type: 'block' }] }),
+]`,
+    rendererExcerpt: `<section class={['rt-section', widthClass]}>
+  {section.heading && <HeadingTag>{section.heading}</HeadingTag>}
+  {section.content && <PortableText value={section.content} />}
+</section>`,
+  },
+  {
+    id: 'card-grid',
+    label: 'Card Grid',
+    tagline: 'Responsive grid of cards. Each card has an icon or image, title, body, and optional link.',
+    Component: CardGrid,
+    sample: {
+      _type: 'cardGrid',
+      _key: 'demo-cards',
+      heading: 'What Makes SCA Different',
+      subtitle: 'Three pillars editors can rearrange, retitle, or extend without writing code.',
+      columns: 3,
+      cards: [
+        {
+          _key: 'c1',
+          title: 'Academic Rigor',
+          body: 'Small classes, demanding curriculum, and one-on-one mentorship.',
+          icon: 'brain',
+        },
+        {
+          _key: 'c2',
+          title: 'Boarding Community',
+          body: 'A residential life that builds independence and lifelong friendships.',
+          icon: 'users',
+        },
+        {
+          _key: 'c3',
+          title: 'Athletics That Matter',
+          body: 'Competitive teams, coaching from former collegiate athletes.',
+          icon: 'trophy',
+        },
+      ],
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/cardGrid.ts',
+    rendererPath: 'apps/web/src/components/sections/CardGrid.astro',
+    registeredOn: ['page', 'program', 'homepageConfig'],
+    schemaExcerpt: `name: 'cardGrid',
+fields: [
+  defineField({ name: 'heading', type: 'string' }),
+  defineField({ name: 'columns', type: 'number',
+    options: { list: [2, 3, 4] }, initialValue: 3 }),
+  defineField({ name: 'cards', type: 'array', of: [
+    defineArrayMember({ type: 'object', fields: [
+      'title', 'body', 'image', 'icon', 'link',
+    ] })
+  ] }),
+]`,
+    rendererExcerpt: `<div class="cg-section__grid">
+  {cards.map(card => (
+    <article class="cg-card">
+      {card.image?.asset && <img src={urlFor(card.image)…} />}
+      <h3>{card.title}</h3>
+      <p>{card.body}</p>
+    </article>
+  ))}
+</div>`,
+    notes: 'Image fields omitted in this sample. Editors choose images from the Sanity asset library; the renderer calls urlFor() and serves responsive variants.',
+  },
+  {
+    id: 'text-with-image',
+    label: 'Text with Image',
+    tagline: 'Image on one side, text on the other. Editor chooses left/right and standard/portrait layout.',
+    Component: TextWithImage,
+    sample: {
+      _type: 'textWithImage',
+      _key: 'demo-twi',
+      heading: 'Where Boarding and Day Students Learn Together',
+      orientation: 'imageRight',
+      layout: 'standard',
+      content: [
+        {
+          _type: 'block',
+          _key: 'p1',
+          children: [
+            {
+              _type: 'span',
+              _key: 's1',
+              text: 'A demonstration block with no image attached so the layout reflows to a single column. In production, editors pick an image from the asset library; the schema enforces alt text for accessibility.',
+            },
+          ],
+        },
+      ],
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/textWithImage.ts',
+    rendererPath: 'apps/web/src/components/sections/TextWithImage.astro',
+    registeredOn: ['page', 'program', 'homepageConfig'],
+    schemaExcerpt: `name: 'textWithImage',
+fields: [
+  defineField({ name: 'heading', type: 'string' }),
+  defineField({ name: 'orientation', type: 'string',
+    options: { list: ['imageLeft', 'imageRight'] } }),
+  defineField({ name: 'layout', type: 'string',
+    options: { list: ['standard', 'portrait'] } }),
+  defineField({ name: 'image', type: 'image' }),
+  defineField({ name: 'content', type: 'array', of: [{ type: 'block' }] }),
+]`,
+    rendererExcerpt: `<section class={['twi-section', \`twi-section--\${orientation}\`]}>
+  {hasImage && <img src={urlFor(section.image)…} />}
+  <div class="twi-section__text">
+    <HeadingTag>{section.heading}</HeadingTag>
+    <PortableText value={section.content} />
+  </div>
+</section>`,
+  },
+  {
+    id: 'cta-banner',
+    label: 'CTA Banner',
+    tagline: 'Call-to-action panel with heading, optional subtitle, and one or two buttons.',
+    Component: CtaBanner,
+    sample: {
+      _type: 'ctaBanner',
+      _key: 'demo-cta',
+      heading: 'Ready to Visit?',
+      subtitle: 'Schedule a campus tour or request more information.',
+      variant: 'navy',
+      primaryCta: { label: 'Schedule a Tour', href: '/contact' },
+      secondaryCta: { label: 'Request Info', href: '/admissions' },
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/ctaBanner.ts',
+    rendererPath: 'apps/web/src/components/sections/CtaBanner.astro',
+    registeredOn: ['page', 'program', 'homepageConfig'],
+    schemaExcerpt: `name: 'ctaBanner',
+fields: [
+  defineField({ name: 'heading', type: 'string', validation: r => r.required() }),
+  defineField({ name: 'subtitle', type: 'string' }),
+  defineField({ name: 'variant', type: 'string',
+    options: { list: ['navy', 'gold', 'light'] } }),
+  defineField({ name: 'primaryCta', type: 'object',
+    fields: [{ name: 'label' }, { name: 'href' }] }),
+]`,
+    rendererExcerpt: `<section class={['cta-banner', \`cta-banner--\${variant}\`]}>
+  <HeadingTag>{section.heading}</HeadingTag>
+  {section.subtitle && <p>{section.subtitle}</p>}
+  <a href={section.primaryCta.href} class="btn btn--primary">{section.primaryCta.label}</a>
+</section>`,
+  },
+  {
+    id: 'stats-row',
+    label: 'Stats Row',
+    tagline: 'Row of numerical highlights. Each stat has a value and a label.',
+    Component: StatsRow,
+    sample: {
+      _type: 'statsRow',
+      _key: 'demo-stats',
+      heading: 'By the Numbers',
+      variant: 'navy',
+      stats: [
+        { _key: 's1', value: '8:1', label: 'Student–faculty ratio' },
+        { _key: 's2', value: '24', label: 'AP & advanced courses' },
+        { _key: 's3', value: '100%', label: 'College placement' },
+        { _key: 's4', value: '32', label: 'Athletic teams' },
+      ],
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/statsRow.ts',
+    rendererPath: 'apps/web/src/components/sections/StatsRow.astro',
+    registeredOn: ['page', 'program', 'homepageConfig'],
+    schemaExcerpt: `name: 'statsRow',
+fields: [
+  defineField({ name: 'heading', type: 'string' }),
+  defineField({ name: 'variant', type: 'string',
+    options: { list: ['navy', 'gold', 'light'] } }),
+  defineField({ name: 'stats', type: 'array', of: [
+    defineArrayMember({ type: 'object',
+      fields: [{ name: 'value' }, { name: 'label' }] })
+  ] }),
+]`,
+    rendererExcerpt: `<div class="sr-section__grid">
+  {stats.map(s => (
+    <div class="sr-section__item">
+      <span class="sr-section__value">{s.value}</span>
+      <span class="sr-section__label">{s.label}</span>
+    </div>
+  ))}
+</div>`,
+  },
+  {
+    id: 'testimonial-block',
+    label: 'Testimonial',
+    tagline: 'Pull quote with attribution and optional photo.',
+    Component: TestimonialBlock,
+    sample: {
+      _type: 'testimonialBlock',
+      _key: 'demo-testimonial',
+      quote:
+        'The teachers know my daughter as a person, not just a name on a roster. That changed everything for her.',
+      name: 'Demo Parent',
+      role: 'Parent of a current student',
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/testimonialBlock.ts',
+    rendererPath: 'apps/web/src/components/sections/TestimonialBlock.astro',
+    registeredOn: ['page', 'program', 'homepageConfig'],
+    schemaExcerpt: `name: 'testimonialBlock',
+fields: [
+  defineField({ name: 'quote', type: 'text', validation: r => r.required() }),
+  defineField({ name: 'name', type: 'string' }),
+  defineField({ name: 'role', type: 'string' }),
+  defineField({ name: 'image', type: 'image', options: { hotspot: true } }),
+]`,
+    rendererExcerpt: `<blockquote>
+  <p>&ldquo;{section.quote}&rdquo;</p>
+</blockquote>
+<cite>{section.name}</cite>
+{section.role && <p>{section.role}</p>}`,
+    notes: 'Quoted person and role above are illustrative — not real attributions.',
+  },
+  {
+    id: 'accordion-section',
+    label: 'Accordion (FAQ)',
+    tagline: 'Expandable Q&A list. Each item has a question and a rich-text answer.',
+    Component: AccordionSection,
+    sample: {
+      _type: 'accordionSection',
+      _key: 'demo-accordion',
+      heading: 'Frequently Asked Questions',
+      items: [
+        {
+          _key: 'q1',
+          question: 'Do you offer financial aid?',
+          answer: [
+            {
+              _type: 'block',
+              _key: 'a1',
+              children: [
+                {
+                  _type: 'span',
+                  _key: 's1',
+                  text: 'Yes. Sample answer text — in production this is full rich text.',
+                },
+              ],
+            },
+          ],
+        },
+        {
+          _key: 'q2',
+          question: 'When are tours offered?',
+          answer: [
+            {
+              _type: 'block',
+              _key: 'a2',
+              children: [
+                {
+                  _type: 'span',
+                  _key: 's2',
+                  text: 'Sample answer. Tours run weekday mornings during the academic year.',
+                },
+              ],
+            },
+          ],
+        },
+        {
+          _key: 'q3',
+          question: 'What is the student–faculty ratio?',
+          answer: [
+            {
+              _type: 'block',
+              _key: 'a3',
+              children: [{ _type: 'span', _key: 's3', text: 'Sample answer: 8:1.' }],
+            },
+          ],
+        },
+      ],
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/accordionSection.ts',
+    rendererPath: 'apps/web/src/components/sections/AccordionSection.astro',
+    registeredOn: ['page', 'program', 'homepageConfig'],
+    schemaExcerpt: `name: 'accordionSection',
+fields: [
+  defineField({ name: 'heading', type: 'string' }),
+  defineField({ name: 'items', type: 'array', of: [
+    defineArrayMember({ type: 'object', fields: [
+      { name: 'question', type: 'string' },
+      { name: 'answer', type: 'array', of: [{ type: 'block' }] },
+    ] })
+  ] }),
+]`,
+    rendererExcerpt: `{items.map(item => (
+  <details>
+    <summary>{item.question}</summary>
+    <PortableText value={item.answer} />
+  </details>
+))}`,
+  },
+  {
+    id: 'upcoming-events',
+    label: 'Upcoming Events',
+    tagline: 'Auto-populated list of upcoming events from the CMS, sorted by date.',
+    Component: UpcomingEvents,
+    sample: {
+      _type: 'upcomingEvents',
+      _key: 'demo-events',
+      heading: 'Upcoming Events',
+      limit: 4,
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/upcomingEvents.ts',
+    rendererPath: 'apps/web/src/components/sections/UpcomingEvents.astro',
+    registeredOn: ['page', 'program', 'homepageConfig'],
+    schemaExcerpt: `name: 'upcomingEvents',
+fields: [
+  defineField({ name: 'heading', type: 'string', initialValue: 'Upcoming Events' }),
+  defineField({ name: 'limit', type: 'number', initialValue: 3,
+    validation: r => r.required().integer().min(1).max(12) }),
+]`,
+    rendererExcerpt: `const { data: events } = await loadQuery({
+  query: \`*[_type=="event" && date >= now()] | order(date asc)[0...$\{limit}]\`
+})
+{events.map(e => <EventCard event={e} />)}`,
+    notes: 'Self-fetches from Sanity at render time. Shows real published events.',
+  },
+  {
+    id: 'latest-news',
+    label: 'Latest News',
+    tagline: 'Auto-populated grid of the most recent news articles, featured first.',
+    Component: LatestNews,
+    sample: {
+      _type: 'latestNews',
+      _key: 'demo-news',
+      heading: 'Latest News',
+      limit: 3,
+      ctaLabel: 'View All News',
+      ctaHref: '/news',
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/latestNews.ts',
+    rendererPath: 'apps/web/src/components/sections/LatestNews.astro',
+    registeredOn: ['page', 'homepageConfig'],
+    schemaExcerpt: `name: 'latestNews',
+fields: [
+  defineField({ name: 'heading', initialValue: 'Latest News' }),
+  defineField({ name: 'limit', type: 'number', initialValue: 3,
+    validation: r => r.required().integer().min(1).max(12) }),
+  defineField({ name: 'ctaLabel', initialValue: 'View All News' }),
+  defineField({ name: 'ctaHref', initialValue: '/news' }),
+]`,
+    rendererExcerpt: `const { data: news } = await loadQuery({
+  query: \`*[_type=="news"] | order(featured desc, date desc)[0...$\{limit}]\`
+})
+{news.map(article => <NewsCard article={article} />)}`,
+    notes: 'Self-fetches from Sanity. Not registered on program documents.',
+  },
+  {
+    id: 'video-embed',
+    label: 'Video Embed',
+    tagline: 'External YouTube or Vimeo video. Editor pastes a URL.',
+    Component: VideoEmbed,
+    sample: {
+      _type: 'videoEmbed',
+      _key: 'demo-video',
+      url: 'https://www.youtube.com/watch?v=vKKK098we_I',
+      title: 'Demo video',
+      caption: 'Sample caption — replace with editorial copy in production.',
+      aspectRatio: '16/9',
+    },
+    schemaPath: 'apps/sca-studio/schemaTypes/blocks/videoEmbed.ts',
+    rendererPath: 'apps/web/src/components/sections/VideoEmbed.astro',
+    registeredOn: ['page', 'program', 'homepageConfig'],
+    schemaExcerpt: `name: 'videoEmbed',
+fields: [
+  defineField({ name: 'url', type: 'url',
+    validation: r => r.required().custom(v => {
+      const r = parseVideoEmbed(v)
+      return 'error' in r ? r.error : true
+    }) }),
+  defineField({ name: 'title', type: 'string' }),
+  defineField({ name: 'caption', type: 'string' }),
+  defineField({ name: 'aspectRatio', type: 'string',
+    options: { list: ['16/9', '9/16', '4/3'] } }),
+]`,
+    rendererExcerpt: `const parsed = parseVideoEmbed(section.url)
+const embedSrc = 'src' in parsed ? parsed.src : null
+{embedSrc && (
+  <iframe src={embedSrc} loading="lazy" allowfullscreen
+    referrerpolicy="strict-origin-when-cross-origin" />
+)}`,
+    notes:
+      'YouTube uses youtube-nocookie.com, which reduces tracking compared with the standard embed domain. The iframe is loading="lazy" and the URL is allowlisted at the schema level.',
+  },
+]
+---
+
+<BaseLayout
+  title="Block Library"
+  description="Internal reference page showing every page-builder block with sample data and developer notes."
+  containerClass="bl-layout"
+  noindex
+>
+  <header class="bl-header">
+    <p class="bl-header__eyebrow">Internal reference</p>
+    <h1 class="bl-header__title">Block Library</h1>
+    <p class="bl-header__lede">
+      Every page-builder block on a single page, rendered with sample data. Open the
+      <strong>Developer details</strong> panel under each block to see file paths, sample
+      payloads, and short illustrative excerpts of the schema and renderer.
+    </p>
+    <p class="bl-header__access">
+      <strong>Access posture:</strong> this page is <code>noindex</code>, but the URL is not
+      access control. Anyone with the link can view this page. Full source code lives in the
+      repository, not here.
+    </p>
+  </header>
+
+  <nav class="bl-toc" aria-label="Block library contents">
+    <p class="bl-toc__label">Blocks</p>
+    <ol class="bl-toc__list">
+      {blocks.map((b, i) => (
+        <li><a href={`#${b.id}`}>{i + 1}. {b.label}</a></li>
+      ))}
+    </ol>
+  </nav>
+
+  {blocks.map((b, i) => (
+    <section id={b.id} class="bl-block">
+      <header class="bl-block__head">
+        <p class="bl-block__num">Block {i + 1} of {blocks.length}</p>
+        <h2 class="bl-block__title">{b.label}</h2>
+        <p class="bl-block__tagline">{b.tagline}</p>
+      </header>
+
+      <div class="bl-block__live">
+        <b.Component section={b.sample} headingLevel="h3" />
+      </div>
+
+      <details class="bl-block__dev">
+        <summary>Developer details</summary>
+        <dl class="bl-dl">
+          <dt>Schema file</dt>
+          <dd><code>{b.schemaPath}</code></dd>
+          <dt>Renderer file</dt>
+          <dd><code>{b.rendererPath}</code></dd>
+          <dt>Allowed on document types</dt>
+          <dd>{b.registeredOn.join(', ')}</dd>
+          {b.notes && (<><dt>Notes</dt><dd>{b.notes}</dd></>)}
+          <dt>Sample payload (passed to the renderer as the <code>section</code> prop)</dt>
+          <dd><pre class="bl-code"><code>{JSON.stringify(b.sample, null, 2)}</code></pre></dd>
+          <dt>Schema excerpt (illustrative — not full source)</dt>
+          <dd><pre class="bl-code"><code>{b.schemaExcerpt}</code></pre></dd>
+          <dt>Renderer excerpt (illustrative — not full source)</dt>
+          <dd><pre class="bl-code"><code>{b.rendererExcerpt}</code></pre></dd>
+        </dl>
+      </details>
+    </section>
+  ))}
+
+  <section class="bl-howto">
+    <h2>How to add a new block</h2>
+    <ol>
+      <li>Create the schema at <code>apps/sca-studio/schemaTypes/blocks/&lt;name&gt;.ts</code>.</li>
+      <li>Register it in <code>apps/sca-studio/schemaTypes/index.ts</code>.</li>
+      <li>Add it to the <code>sections[].of</code> array on each document type that should accept it (<code>page.ts</code>, <code>program.ts</code>, <code>homepageConfig.ts</code>).</li>
+      <li>Create the renderer at <code>apps/web/src/components/sections/&lt;Name&gt;.astro</code> and register it in <code>SectionRenderer.astro</code>'s <code>SECTION_MAP</code>.</li>
+    </ol>
+
+    <h2>How reskinning works</h2>
+    <p>The site separates <em>what content exists</em> from <em>how content looks</em>. There are three layers:</p>
+    <ol>
+      <li>
+        <strong>Sitewide design tokens</strong> live in <code>apps/web/src/styles/global.css</code> and theme files in <code>apps/web/src/styles/themes/</code>. Changing token values (colors, spacing, fonts) propagates through every block.
+      </li>
+      <li>
+        <strong>Per-block visuals</strong> live in each block's <code>.astro</code> file. Each block contains its own scoped CSS. Changing one block does not affect any other.
+      </li>
+      <li>
+        <strong>Editor controls</strong> are confined to schema-defined fields: text content, image choice, block ordering, and a small number of variant options (e.g. CTA banner color, video aspect ratio). Editors cannot change CSS, HTML structure, or layout.
+      </li>
+    </ol>
+    <p>A future re-skin can range from changing token values (light) to adding a new theme file with per-block variants (heavier). Editors do not need to relearn anything either way.</p>
+  </section>
+</BaseLayout>
+
+<style>
+  :global(.bl-layout) {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+    padding: var(--space-12) var(--container-padding) var(--space-24);
+  }
+
+  .bl-header {
+    margin: 0 0 var(--space-12);
+    padding-bottom: var(--space-8);
+    border-bottom: 1px solid var(--neutral-new-200, #e5e7eb);
+  }
+
+  .bl-header__eyebrow {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--gold-500);
+    margin: 0 0 var(--space-3);
+  }
+
+  .bl-header__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-5xl);
+    margin: 0 0 var(--space-4);
+  }
+
+  .bl-header__lede {
+    font-size: var(--font-size-lg);
+    max-width: 60ch;
+    margin: 0 0 var(--space-4);
+    color: var(--neutral-new-700, #374151);
+  }
+
+  .bl-header__access {
+    font-size: var(--font-size-sm);
+    max-width: 60ch;
+    color: var(--neutral-new-600);
+    background: var(--neutral-new-50);
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid var(--gold-500);
+    border-radius: 2px;
+    margin: 0;
+  }
+
+  .bl-toc {
+    margin: 0 0 var(--space-16);
+    padding: var(--space-5) var(--space-6);
+    background: var(--neutral-new-50);
+    border-radius: 4px;
+  }
+
+  .bl-toc__label {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin: 0 0 var(--space-3);
+    color: var(--neutral-new-600);
+  }
+
+  .bl-toc__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  @media (min-width: 48rem) {
+    .bl-toc__list { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 64rem) {
+    .bl-toc__list { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .bl-toc__list a {
+    display: block;
+    padding: var(--space-2) var(--space-3);
+    border-radius: 3px;
+    text-decoration: none;
+    color: var(--navy-900);
+    font-size: var(--font-size-sm);
+  }
+
+  .bl-toc__list a:hover {
+    background: white;
+  }
+
+  .bl-block {
+    margin: 0 0 var(--space-20);
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--neutral-new-200, #e5e7eb);
+    scroll-margin-top: var(--space-8);
+  }
+
+  .bl-block__head {
+    margin: 0 0 var(--space-6);
+  }
+
+  .bl-block__num {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--neutral-new-600);
+    margin: 0 0 var(--space-2);
+  }
+
+  .bl-block__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    margin: 0 0 var(--space-2);
+  }
+
+  .bl-block__tagline {
+    color: var(--neutral-new-700, #374151);
+    margin: 0;
+    max-width: 70ch;
+  }
+
+  .bl-block__live {
+    margin: var(--space-6) 0;
+    border: 1px dashed var(--neutral-new-200, #e5e7eb);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .bl-block__dev {
+    margin-top: var(--space-4);
+    background: var(--neutral-new-50);
+    border-radius: 4px;
+    padding: var(--space-4);
+  }
+
+  .bl-block__dev > summary {
+    cursor: pointer;
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--navy-900);
+  }
+
+  .bl-block__dev[open] > summary {
+    margin-bottom: var(--space-4);
+  }
+
+  .bl-dl {
+    margin: 0;
+  }
+
+  .bl-dl dt {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--neutral-new-600);
+    margin-top: var(--space-4);
+  }
+
+  .bl-dl dt:first-of-type {
+    margin-top: 0;
+  }
+
+  .bl-dl dd {
+    margin: var(--space-2) 0 0;
+  }
+
+  .bl-dl code {
+    font-family: var(--font-family-mono);
+    font-size: 0.875em;
+  }
+
+  .bl-code {
+    background: var(--navy-900);
+    color: #e5e7eb;
+    padding: var(--space-3) var(--space-4);
+    border-radius: 3px;
+    overflow-x: auto;
+    font-size: var(--font-size-sm);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  .bl-code code {
+    font-family: var(--font-family-mono);
+    color: inherit;
+    background: transparent;
+  }
+
+  .bl-howto {
+    margin-top: var(--space-20);
+    padding: var(--space-10) 0;
+    border-top: 2px solid var(--neutral-new-200, #e5e7eb);
+  }
+
+  .bl-howto h2 {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    margin: 0 0 var(--space-4);
+  }
+
+  .bl-howto h2 + p,
+  .bl-howto ol + h2 {
+    margin-top: var(--space-8);
+  }
+
+  .bl-howto ol {
+    padding-left: var(--space-6);
+    line-height: 1.7;
+  }
+
+  .bl-howto li {
+    margin-bottom: var(--space-2);
+  }
+</style>

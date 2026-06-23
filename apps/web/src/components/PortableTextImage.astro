@@ -1,0 +1,30 @@
+---
+/**
+ * PortableTextImage — Renders inline images from Sanity Portable Text.
+ *
+ * Used as a custom type component for astro-portabletext.
+ * Renders caption as plain escaped text (not HTML).
+ */
+import { urlFor } from '../sanity/lib/image'
+
+interface Props {
+  node: {
+    asset?: { _ref: string }
+    alt?: string
+    caption?: string
+  }
+}
+
+const { node } = Astro.props
+const hasAsset = !!node?.asset
+const imageUrl = hasAsset ? urlFor(node).width(800).auto('format').url() : ''
+---
+
+{hasAsset && (
+  <figure class="article__body-image">
+    <img src={imageUrl} alt={node.alt || ''} loading="lazy" />
+    {node.caption && (
+      <figcaption>{node.caption}</figcaption>
+    )}
+  </figure>
+)}

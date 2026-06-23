@@ -1,0 +1,625 @@
+---
+/**
+ * Homepage - Springfield Commonwealth Academy
+ *
+ * Full-bleed sections: hero, value props, news, programs, admissions CTA.
+ * SSR mode required for query param theme switching (?theme=alt).
+ */
+export const prerender = false;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import NewsCard from '../components/NewsCard.astro';
+import SectionRenderer from '../components/sections/SectionRenderer.astro';
+import { loadQuery } from '../sanity/lib/load-query';
+import { urlFor } from '../sanity/lib/image';
+
+// Fetch homepage config from CMS
+const { data: hpConfig } = await loadQuery<any>({
+  query: `*[_type == "homepageConfig"][0] {
+    ...,
+    "videoUrl": heroVideo.asset->url,
+    sections[] {
+      _key,
+      _type,
+      ...
+    }
+  }`
+});
+
+// Homepage content reads from homepageConfig singleton. Empty arrays hide
+// their sections. String fallbacks on hero text are defensive only —
+// homepageConfig.heroTitle is required in the schema.
+const heroEyebrow = hpConfig?.heroEyebrow || 'Springfield Commonwealth Academy | Est. 2011';
+const heroTitle = hpConfig?.heroTitle || 'Shaping Tomorrow\'s Global Leaders';
+const heroSubtitle = hpConfig?.heroSubtitle || '';
+const heroPrimaryCta = hpConfig?.heroPrimaryCta || { label: 'Apply Now', href: '/admissions' };
+const heroSecondaryCta = hpConfig?.heroSecondaryCta || { label: 'Discover SCA', href: '/about' };
+const stats = hpConfig?.stats || [];
+const valueProps = hpConfig?.valueProps || [];
+const programs = hpConfig?.programHighlights || [];
+const ctaTitle = hpConfig?.ctaTitle || 'Begin Your Journey';
+const ctaSubtitle = hpConfig?.ctaSubtitle || '';
+const ctaPrimaryCta = hpConfig?.ctaPrimaryCta || { label: 'Start Your Application', href: '/admissions' };
+const ctaSecondaryCta = hpConfig?.ctaSecondaryCta || { label: 'Schedule a Visit', href: '/contact' };
+
+// CMS-first toggle: when ON and sections[] populated, the homepage renders via
+// SectionRenderer. Otherwise the legacy hero/values/programs/CTA path runs.
+// Default OFF — merging this PR alone changes nothing visible.
+const useSectionsMode =
+  hpConfig?.useSections === true &&
+  Array.isArray(hpConfig?.sections) &&
+  hpConfig.sections.length > 0;
+
+// Legacy-only: news for the homepage "Latest News" section. In sections-mode
+// the LatestNews block fetches its own news, so this query is skipped to
+// avoid a redundant Sanity API call per request.
+let news: any[] = [];
+if (!useSectionsMode) {
+  const newsResult = await loadQuery<any[]>({
+    query: `*[_type == "news"] | order(featured desc, date desc)[0...3] {
+      _id,
+      title,
+      slug,
+      date,
+      summary,
+      featured,
+      image
+    }`,
+  });
+  news = newsResult.data || [];
+}
+
+---
+
+{useSectionsMode && (
+  <BaseLayout title="Home" description="Springfield Commonwealth Academy - Preparing students for success in a global community" containerClass="hp-layout">
+    <SectionRenderer sections={hpConfig.sections} />
+  </BaseLayout>
+)}
+
+{!useSectionsMode && (
+<BaseLayout title="Home" description="Springfield Commonwealth Academy - Preparing students for success in a global community" containerClass="hp-layout">
+  <!-- Hero Section -->
+  <PageHero
+    videoSrc={hpConfig?.videoUrl}
+    image={hpConfig?.heroImage}
+    overlayOpacity={hpConfig?.heroOverlayOpacity}
+    minHeight="70vh"
+    alignItems="center"
+    class="hp-hero"
+  >
+    <p class="hp-hero__eyebrow">{heroEyebrow}</p>
+    <h1 class="hp-hero__title">{heroTitle}</h1>
+    <p class="hp-hero__subtitle">{heroSubtitle}</p>
+    <div class="hp-hero__actions">
+      <a href={heroPrimaryCta.href} class="btn btn--primary btn--lg">{heroPrimaryCta.label}</a>
+      <a href={heroSecondaryCta.href} class="btn btn--secondary-light btn--lg">{heroSecondaryCta.label}</a>
+    </div>
+  </PageHero>
+
+  {/* Stats Bar (renders only when stats exist in CMS) */}
+  {stats && stats.length > 0 && (
+    <section class="hp-stats">
+      <div class="hp-section__container">
+        <div class="hp-stats__grid">
+          {stats.map((stat: any) => (
+            <div class="hp-stats__item">
+              <span class="hp-stats__value">{stat.value}</span>
+              <span class="hp-stats__label">{stat.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  {valueProps.length > 0 && (
+  <section class="hp-values">
+    <div class="hp-section__container">
+      <h2 class="hp-section__heading reveal">Why Choose SCA</h2>
+      <div class="hp-values__grid reveal-stagger">
+        {valueProps.map((vp) => (
+          <div class="hp-values__card reveal">
+            <div class="hp-values__icon" data-icon={vp.icon}>
+              {vp.icon === 'brain' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+                  <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+                </svg>
+              )}
+              {vp.icon === 'book-open' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+              )}
+              {vp.icon === 'trophy' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                  <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                  <path d="M4 22h16"/>
+                  <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/>
+                  <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/>
+                  <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                </svg>
+              )}
+              {vp.icon === 'graduation-cap' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 10v6"/>
+                  <path d="M2 10l10-5 10 5-10 5z"/>
+                  <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                </svg>
+              )}
+              {vp.icon === 'users' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              )}
+              {vp.icon === 'globe' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="2" y1="12" x2="22" y2="12"/>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+              )}
+            </div>
+            <h3 class="hp-values__title">{vp.title}</h3>
+            <p class="hp-values__description">{vp.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+  )}
+
+  <!-- News Section -->
+  {news && news.length > 0 && (
+    <section class="hp-news reveal">
+      <div class="hp-section__container">
+        <h2 class="hp-section__heading">Latest News</h2>
+        <div class="hp-news__grid">
+          {news.map((article: any) => (
+            <NewsCard article={article} />
+          ))}
+        </div>
+        <div class="hp-news__footer">
+          <a href="/news" class="btn btn--secondary">View All News &rarr;</a>
+        </div>
+      </div>
+    </section>
+  )}
+
+  {programs.length > 0 && (
+  <!-- Programs Section -->
+  <section class="hp-programs reveal">
+    <div class="hp-section__container">
+      <h2 class="hp-section__heading hp-section__heading--light">Our Programs</h2>
+      <div class="hp-programs__grid">
+        {programs.map((prog) => (
+          <a href={prog.href} class="hp-programs__card">
+            <h3 class="hp-programs__title">{prog.title}</h3>
+            <p class="hp-programs__description">{prog.description}</p>
+            <span class="hp-programs__cta">{prog.cta} &rarr;</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+  )}
+
+  <!-- Admissions CTA -->
+  <section class="hp-cta reveal">
+    <div class="hp-cta__container">
+      <div class="hp-cta__rule"></div>
+      <h2 class="hp-cta__title">{ctaTitle}</h2>
+      <p class="hp-cta__subtitle">
+        {ctaSubtitle}
+      </p>
+      <div class="hp-cta__actions">
+        <a href={ctaPrimaryCta.href} class="btn btn--primary btn--lg">{ctaPrimaryCta.label}</a>
+        <a href={ctaSecondaryCta.href} class="btn btn--secondary-light btn--lg">{ctaSecondaryCta.label}</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+)}
+
+<style>
+  @import '../styles/global.css';
+
+  /* Remove main-content padding for full-bleed homepage */
+  :global(.main-content:has(.hp-layout)) {
+    padding: 0;
+  }
+
+  /* Shared section container */
+  .hp-section__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+    padding: 0 var(--container-padding);
+  }
+
+  .hp-section__heading {
+    margin: 0 0 var(--space-10);
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: var(--neutral-new-900);
+    text-align: center;
+  }
+
+  .hp-section__heading--light {
+    color: var(--color-text-inverse);
+  }
+
+  /* ===== Hero ===== */
+  .hp-hero {
+    background: radial-gradient(ellipse at 30% 20%, rgba(30, 58, 95, 0.6) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(201, 162, 39, 0.08) 0%, transparent 40%),
+                var(--navy-800);
+    color: var(--color-text-inverse);
+    padding: var(--space-20) var(--container-padding);
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Image + overlay handled by PageHero component */
+
+  .hp-hero__container {
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .hp-hero__eyebrow {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--gold-400);
+    margin-bottom: var(--space-6);
+  }
+
+  .hp-hero__title {
+    font-family: var(--font-family-heading);
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 var(--space-6);
+    color: #ffffff;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .hp-hero__subtitle {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-lg);
+    line-height: var(--line-height-relaxed);
+    color: rgba(255, 255, 255, 0.8);
+    max-width: 50ch;
+    margin: 0 auto var(--space-10);
+  }
+
+  .hp-hero__actions {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* Secondary button on dark bg */
+  .hp-hero__actions :global(.btn--secondary-light) {
+    background-color: transparent;
+    color: var(--color-text-inverse);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .hp-hero__actions :global(.btn--secondary-light:hover) {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.7);
+    color: var(--color-text-inverse);
+  }
+
+  @media (min-width: 48rem) {
+    .hp-hero__title {
+      font-size: 3.5rem;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .hp-hero {
+      padding: var(--space-24) var(--container-padding);
+    }
+
+    .hp-hero__title {
+      font-size: 4rem;
+    }
+  }
+
+  /* ===== Stats Bar ===== */
+  .hp-stats {
+    background-color: var(--navy-900);
+    padding: var(--space-10) 0;
+  }
+
+  .hp-stats__grid {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .hp-stats__item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .hp-stats__value {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
+    color: var(--gold-400);
+  }
+
+  .hp-stats__label {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  @media (min-width: 48rem) {
+    .hp-stats__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .hp-stats__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /* ===== Value Props ===== */
+  .hp-values {
+    background-color: #ffffff;
+    padding: var(--space-20) 0;
+  }
+
+  .hp-values__grid {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: 1fr;
+  }
+
+  .hp-values__card {
+    background-color: var(--neutral-new-50);
+    border: 1px solid var(--neutral-new-200);
+    border-radius: 12px;
+    padding: var(--space-8) var(--space-6);
+    text-align: center;
+    transition: transform 300ms ease-out, box-shadow 300ms ease-out, border-color 300ms ease-out;
+  }
+
+  .hp-values__card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+    border-color: var(--gold-300);
+    background-color: #ffffff;
+  }
+
+  .hp-values__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(201, 162, 39, 0.12) 0%, rgba(201, 162, 39, 0.04) 100%);
+    color: var(--gold-500);
+    margin-bottom: var(--space-5);
+  }
+
+  .hp-values__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--navy-800);
+    margin: 0 0 var(--space-3);
+  }
+
+  .hp-values__description {
+    font-size: var(--font-size-sm);
+    color: var(--neutral-new-600);
+    line-height: var(--line-height-relaxed);
+    margin: 0;
+  }
+
+  @media (min-width: 48rem) {
+    .hp-values__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .hp-values__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* ===== News Section ===== */
+  .hp-news {
+    padding: var(--space-20) 0;
+    background-color: var(--neutral-new-50);
+  }
+
+  .hp-news__grid {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: 1fr;
+  }
+
+  .hp-news__footer {
+    text-align: center;
+    margin-top: var(--space-10);
+  }
+
+  @media (min-width: 48rem) {
+    .hp-news__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .hp-news__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* ===== Programs Section ===== */
+  .hp-programs {
+    background: linear-gradient(170deg, var(--navy-800) 0%, var(--navy-900) 100%);
+    padding: var(--space-20) 0;
+  }
+
+  .hp-programs__grid {
+    display: grid;
+    gap: var(--space-8);
+    grid-template-columns: 1fr;
+  }
+
+  .hp-programs__card {
+    display: block;
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: var(--space-10) var(--space-8);
+    text-decoration: none;
+    color: var(--color-text-inverse);
+    border-top: 3px solid var(--gold-500);
+    transition: background-color 300ms ease-out, transform 300ms ease-out, box-shadow 300ms ease-out;
+  }
+
+  .hp-programs__card:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .hp-programs__card:visited {
+    color: var(--color-text-inverse);
+  }
+
+  .hp-programs__title {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-semibold);
+    margin: 0 0 var(--space-4);
+    color: #ffffff;
+  }
+
+  .hp-programs__description {
+    font-size: var(--font-size-base);
+    color: rgba(255, 255, 255, 0.75);
+    line-height: var(--line-height-relaxed);
+    margin: 0 0 var(--space-6);
+  }
+
+  .hp-programs__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--gold-400);
+    transition: color 200ms ease;
+  }
+
+  .hp-programs__card:hover .hp-programs__cta {
+    color: var(--gold-300);
+  }
+
+  @media (min-width: 48rem) {
+    .hp-programs__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .hp-programs__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* ===== Admissions CTA ===== */
+  .hp-cta {
+    background: radial-gradient(ellipse at 50% 0%, rgba(30, 58, 95, 0.5) 0%, transparent 60%),
+                var(--navy-900);
+    padding: var(--space-24) var(--container-padding);
+    text-align: center;
+  }
+
+  .hp-cta__container {
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+  }
+
+  .hp-cta__rule {
+    width: 60px;
+    height: 3px;
+    background: var(--gold-500);
+    margin: 0 auto var(--space-8);
+    border-radius: 2px;
+  }
+
+  .hp-cta__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: var(--color-text-inverse);
+    margin: 0 0 var(--space-4);
+  }
+
+  .hp-cta__subtitle {
+    font-size: var(--font-size-lg);
+    color: rgba(255, 255, 255, 0.7);
+    max-width: 55ch;
+    margin: 0 auto var(--space-10);
+    line-height: var(--line-height-relaxed);
+  }
+
+  .hp-cta__actions {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .hp-cta__actions :global(.btn--secondary-light) {
+    background-color: transparent;
+    color: var(--color-text-inverse);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .hp-cta__actions :global(.btn--secondary-light:hover) {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.7);
+    color: var(--color-text-inverse);
+  }
+
+  @media (min-width: 48rem) {
+    .hp-cta__title {
+      font-size: var(--font-size-4xl);
+    }
+  }
+</style>

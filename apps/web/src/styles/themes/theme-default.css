@@ -1,0 +1,56 @@
+/**
+ * Theme: Default (Navy + Gold)
+ *
+ * The original SCA design — institutional navy with gold accents.
+ * This is the baseline theme. All token names match global.css :root.
+ */
+
+[data-theme="default"],
+:root {
+  /* Navy Palette */
+  --navy-900: #0A1628;
+  --navy-800: #0d1b2a;
+  --navy-700: #1e3a5f;
+  --navy-600: #2c5d8a;
+  --navy-500: #3d7ab8;
+
+  /* Gold Accent Palette */
+  --gold-600: #A68520;
+  --gold-500: #C9A227;
+  --gold-400: #D4B43A;
+  --gold-300: #E0C85C;
+
+  /* Neutral Palette (blue-tinted) */
+  --neutral-new-900: #1A1F2A;
+  --neutral-new-800: #2A3441;
+  --neutral-new-600: #5A6A7A;
+  --neutral-new-300: #D1D9E2;
+  --neutral-new-200: #E8ECF2;
+  --neutral-new-100: #F5F7FA;
+  --neutral-new-50: #FAFBFC;
+
+  /* Semantic Colors */
+  --color-text-primary: var(--neutral-new-900);
+  --color-text-secondary: var(--neutral-new-600);
+  --color-text-muted: var(--neutral-new-600);
+  --color-text-inverse: #ffffff;
+
+  --color-background: #ffffff;
+  --color-background-alt: var(--neutral-new-50);
+  --color-background-elevated: #ffffff;
+
+  --color-border: var(--neutral-new-200);
+  --color-border-light: var(--neutral-new-100);
+
+  --color-link: var(--navy-600);
+  --color-link-hover: var(--navy-700);
+  --color-link-visited: var(--navy-800);
+
+  /* Focus */
+  --focus-ring-color: var(--gold-500);
+
+  /* Typography */
+  --font-family-heading: 'Cormorant Garamond', Georgia, "Times New Roman", serif;
+  --font-family-sans: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-base: var(--font-family-sans);
+}

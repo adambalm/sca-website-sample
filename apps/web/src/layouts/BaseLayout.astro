@@ -1,0 +1,544 @@
+---
+/**
+ * BaseLayout - Main layout wrapper for all pages
+ *
+ * Provides consistent header, footer, and main content structure.
+ * Imports global styles.
+ */
+import { VisualEditing } from '@sanity/astro/visual-editing';
+import { loadQuery } from '../sanity/lib/load-query';
+import { getNavLinkTargetAttrs } from '../lib/nav-link-target';
+
+const visualEditingEnabled =
+  import.meta.env.PUBLIC_SANITY_VISUAL_EDITING_ENABLED === 'true';
+
+interface Props {
+  title: string;
+  description?: string;
+  containerClass?: string;
+  /** OG image URL (absolute). Falls back to default school image. */
+  ogImage?: string;
+  /** Schema.org structured data object to inject as JSON-LD */
+  schema?: Record<string, unknown>;
+  /** If true, adds noindex/nofollow meta tag. Use for admin/internal pages. */
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description = 'Springfield Commonwealth Academy',
+  containerClass = 'main-content__container',
+  ogImage,
+  schema,
+  noindex = false,
+} = Astro.props;
+
+const SITE_URL = 'https://www.springfieldcommonwealthacademy.org';
+const canonicalUrl = `${SITE_URL}${Astro.url.pathname}`;
+const currentPath = Astro.url.pathname;
+
+// Fetch site settings from CMS
+const { data: settings } = await loadQuery<any>({
+  query: '*[_type == "siteSettings"][0]',
+});
+
+const schoolName = settings?.schoolName || 'Springfield Commonwealth Academy';
+const ogImageUrl = ogImage || `${SITE_URL}/images/scao-logo.png`;
+const fullTitle = `${title} | ${schoolName}`;
+
+// Parse "1 Ames Hill Drive\nSpringfield, MA 01105" into PostalAddress parts.
+function parseAddressForSchema(raw?: string) {
+  if (!raw) return undefined;
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const street = lines[0];
+  const m = lines[1]?.match(/^(.+?),\s*([A-Z]{2})\s+(\d{5})/);
+  return m
+    ? { '@type': 'PostalAddress', streetAddress: street, addressLocality: m[1], addressRegion: m[2], postalCode: m[3], addressCountry: 'US' }
+    : { '@type': 'PostalAddress', streetAddress: street, addressCountry: 'US' };
+}
+
+// Organization schema — read from siteSettings, no hardcoded drift.
+const orgSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'EducationalOrganization',
+  name: schoolName,
+  url: SITE_URL,
+  logo: `${SITE_URL}/images/scao-logo.png`,
+  ...(settings?.tagline && { description: settings.tagline }),
+  foundingDate: '2011',
+  ...(settings?.phone && { telephone: settings.phone }),
+  ...(settings?.email && { email: settings.email }),
+  ...(settings?.socialLinks?.length && {
+    sameAs: settings.socialLinks.map((s: any) => s.url).filter(Boolean),
+  }),
+  ...(parseAddressForSchema(settings?.address) && {
+    address: parseAddressForSchema(settings.address),
+  }),
+};
+
+// Fetch navigation from CMS
+const { data: navDoc } = await loadQuery<any>({
+  query: '*[_type == "navigation" && identifier == "main"][0]',
+});
+
+// Fetch footer navigation from CMS
+const { data: footerNavDoc } = await loadQuery<any>({
+  query: '*[_type == "navigation" && identifier == "footer"][0]',
+});
+
+// Fallback navigation (used when CMS nav not available)
+const FALLBACK_NAV_ITEMS = [
+  {
+    label: 'About',
+    href: '/about',
+    children: [
+      { label: 'Our History', href: '/about/history' },
+      { label: 'Vision & Mission', href: '/about/vision' },
+      { label: 'Guardian Alliance', href: '/about/guardian-alliance' },
+    ]
+  },
+  {
+    label: 'Academics',
+    href: '/academics',
+    children: [
+      { label: 'Signature Programs', href: '/academics/signature' },
+      { label: 'Special Programs', href: '/academics/special' },
+      { label: 'Future Study', href: '/academics/future-study' },
+    ]
+  },
+  {
+    label: 'Athletics',
+    href: '/athletics',
+    children: [
+      { label: 'Philosophy', href: '/athletics/philosophy' },
+      { label: 'NCAA Pathway', href: '/athletics/ncaa-pathway' },
+    ]
+  },
+  { label: 'Student Life', href: '/student-life' },
+  { label: 'Admissions', href: '/admissions' },
+  { label: 'News', href: '/news' },
+  { label: 'Calendar', href: '/calendar' },
+  // '/projects' is intentionally 404 (ADR-019) — omitted from fallback nav so a
+  // failed CMS nav fetch can never surface a dead link.
+  { label: 'Contact', href: '/contact' },
+];
+
+const navItems = navDoc?.items || FALLBACK_NAV_ITEMS;
+
+// Site settings — rendered text reads from CMS with defensive string fallbacks.
+const tagline = settings?.tagline || 'Preparing students for success in a global community.';
+const address = settings?.address || '1 Ames Hill Drive\nSpringfield, MA 01105';
+const announcement = settings?.announcement;
+const enrollmentUrl = settings?.enrollmentUrl;
+
+const footerSections = footerNavDoc?.items || [];
+
+// Theme selection: ?theme=alt query param or CMS setting
+const themeParam = Astro.url.searchParams.get('theme');
+const theme = themeParam || 'default';
+
+// Check if current path matches a nav item
+function isActive(href: string): boolean {
+  if (href === '/') return currentPath === '/';
+  return currentPath.startsWith(href);
+}
+---
+
+<!doctype html>
+<html lang="en" data-theme={theme}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta name="theme-color" content="#1e3a5f" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="canonical" href={canonicalUrl} />
+    <title>{fullTitle}</title>
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={schoolName} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
+    {schema && (
+      <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+    )}
+
+    <!-- Fonts & Preconnect -->
+    <link rel="preconnect" href="https://cdn.sanity.io" />
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/cormorant-garamond-latin.woff2" as="font" type="font/woff2" crossorigin />
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <a href="#main-content" class="skip-link">Skip to main content</a>
+
+      {announcement?.enabled && announcement?.text && (
+        <div class="announcement-banner">
+          <div class="announcement-banner__container">
+            {announcement.link ? (
+              <a href={announcement.link} class="announcement-banner__link">{announcement.text}</a>
+            ) : (
+              <span>{announcement.text}</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <header class="site-header">
+        <div class="site-header__container">
+          <a href="/" class="site-header__logo">
+            <img
+              src="/images/scao-logo.png"
+              alt={`${schoolName} crest`}
+              class="site-header__logo-img"
+              width="48"
+              height="48"
+            />
+            <span class="site-header__logo-text">{schoolName}</span>
+          </a>
+
+          <!-- Mobile Menu Toggle -->
+          <button
+            class="mobile-menu-toggle"
+            aria-label="Toggle navigation menu"
+            aria-expanded="false"
+            aria-controls="mobile-nav"
+          >
+            <span class="mobile-menu-toggle__bar"></span>
+            <span class="mobile-menu-toggle__bar"></span>
+            <span class="mobile-menu-toggle__bar"></span>
+          </button>
+
+          <!-- Desktop Navigation -->
+          <nav class="site-header__nav" aria-label="Main navigation">
+            <ul class="site-header__nav-list">
+              {navItems.map((item) => (
+                <li class={item.children ? 'nav-item' : ''}>
+                  <a
+                    href={item.href}
+                    class={`site-header__nav-link ${isActive(item.href) ? 'site-header__nav-link--active' : ''}`}
+                    {...getNavLinkTargetAttrs(item.href)}
+                  >
+                    {item.label}
+                  </a>
+                  {item.children && (
+                    <ul class="nav-item__dropdown">
+                      {item.children.map((child) => (
+                        <li>
+                          <a href={child.href} class="nav-item__dropdown-link" {...getNavLinkTargetAttrs(child.href)}>
+                            {child.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </nav>
+          {enrollmentUrl && (
+            <a href={enrollmentUrl} class="site-header__apply-btn" target="_blank" rel="noopener noreferrer">
+              Apply
+            </a>
+          )}
+        </div>
+
+        <!-- Mobile Navigation -->
+        <nav id="mobile-nav" class="mobile-nav" aria-label="Mobile navigation">
+          <ul class="mobile-nav__list">
+            {navItems.map((item) => (
+              <>
+                <li class="mobile-nav__item">
+                  <a href={item.href} class="mobile-nav__link" {...getNavLinkTargetAttrs(item.href)}>{item.label}</a>
+                </li>
+                {item.children?.map((child) => (
+                  <li class="mobile-nav__item mobile-nav__item--sub">
+                    <a href={child.href} class="mobile-nav__link mobile-nav__link--sub" {...getNavLinkTargetAttrs(child.href)}>
+                      {child.label}
+                    </a>
+                  </li>
+                ))}
+              </>
+            ))}
+          </ul>
+          {enrollmentUrl && (
+            <a href={enrollmentUrl} class="mobile-nav__apply-btn" target="_blank" rel="noopener noreferrer">
+              Apply Now
+            </a>
+          )}
+        </nav>
+      </header>
+
+      <main id="main-content" class="main-content">
+        <div class={containerClass}>
+          <slot />
+        </div>
+      </main>
+
+      <footer class="site-footer">
+        <div class="site-footer__container">
+          <div class="site-footer__content">
+            <div class="site-footer__main">
+              <h2 class="site-footer__section-title">{schoolName}</h2>
+              <p class="site-footer__text">
+                {tagline}
+              </p>
+              <p class="site-footer__text" set:html={address.replace(/\n/g, '<br />')} />
+              {settings?.phone && (
+                <p class="site-footer__text">
+                  <a href={`tel:${settings.phone}`} class="site-footer__link">{settings.phone}</a>
+                </p>
+              )}
+              {settings?.email && (
+                <p class="site-footer__text">
+                  <a href={`mailto:${settings.email}`} class="site-footer__link">{settings.email}</a>
+                </p>
+              )}
+              {settings?.socialLinks && settings.socialLinks.length > 0 && (
+                <div class="site-footer__social">
+                  {settings.socialLinks.map((link: any) => (
+                    <a href={link.url} class="site-footer__social-link" target="_blank" rel="noopener noreferrer">
+                      {link.platform}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {footerSections.map((section: any) => (
+              <div>
+                <h3 class="site-footer__section-title">{section.label}</h3>
+                <ul class="site-footer__list">
+                  {section.children?.map((link: any) => (
+                    <li><a href={link.href} class="site-footer__link" {...getNavLinkTargetAttrs(link.href)}>{link.label}</a></li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div class="site-footer__bottom">
+            <p>&copy; {new Date().getFullYear()} {schoolName}. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      // Mobile menu toggle
+      const toggle = document.querySelector('.mobile-menu-toggle');
+      const mobileNav = document.querySelector('#mobile-nav');
+
+      if (toggle && mobileNav) {
+        toggle.addEventListener('click', () => {
+          const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+          toggle.setAttribute('aria-expanded', String(!isExpanded));
+          mobileNav.setAttribute('data-open', String(!isExpanded));
+        });
+      }
+
+      // Scroll reveal (IntersectionObserver)
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!prefersReducedMotion) {
+        const reveals = document.querySelectorAll('.reveal');
+        if (reveals.length > 0) {
+          const observer = new IntersectionObserver(
+            (entries) => {
+              entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                  entry.target.classList.add('reveal--visible');
+                  observer.unobserve(entry.target);
+                }
+              });
+            },
+            { threshold: 0.15 }
+          );
+          reveals.forEach((el) => observer.observe(el));
+        }
+      }
+    </script>
+    <VisualEditing enabled={visualEditingEnabled} />
+  </body>
+</html>
+
+<style is:global>
+  @import '../styles/global.css';
+</style>
+
+<style>
+  .announcement-banner {
+    background-color: var(--gold-500);
+    color: var(--navy-900);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-align: center;
+    padding: var(--space-2) var(--container-padding);
+  }
+
+  .announcement-banner__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+  }
+
+  .announcement-banner__link {
+    color: var(--navy-900);
+    text-decoration: underline;
+  }
+
+  .announcement-banner__link:hover {
+    color: var(--navy-700);
+  }
+
+  .site-footer__social {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+
+  .site-footer__social-link {
+    color: var(--neutral-new-300);
+    text-decoration: none;
+    font-size: var(--font-size-sm);
+    text-transform: capitalize;
+  }
+
+  .site-footer__social-link:visited {
+    color: var(--neutral-new-300);
+  }
+
+  .site-footer__social-link:hover {
+    color: var(--gold-400);
+  }
+
+  .site-header__nav-link {
+    color: var(--navy-800);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+
+  .site-header__nav-link:visited {
+    color: var(--navy-800);
+  }
+
+  .site-header__nav-link:hover {
+    color: var(--gold-600);
+  }
+
+  .site-header__nav-link--active {
+    color: var(--navy-900);
+    font-weight: var(--font-weight-semibold);
+    border-bottom-color: var(--gold-500);
+  }
+
+  .site-footer__link {
+    color: var(--neutral-new-300);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+
+  .site-footer__link:visited {
+    color: var(--neutral-new-300);
+  }
+
+  .site-footer__link:hover {
+    color: var(--gold-400);
+  }
+
+  .site-footer__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .site-footer__list li {
+    margin-bottom: var(--space-2);
+  }
+
+  .site-footer__main {
+    grid-column: 1 / -1;
+  }
+
+  @media (min-width: 64rem) {
+    .site-footer__main {
+      grid-column: auto;
+    }
+  }
+
+  .mobile-nav__item--sub {
+    padding-left: var(--space-4);
+  }
+
+  .mobile-nav__link--sub {
+    font-size: var(--font-size-sm);
+    color: var(--neutral-new-600);
+  }
+
+  .mobile-nav__link--sub:hover {
+    color: var(--gold-500);
+  }
+
+  /* Apply button — persistent CTA in header */
+  .site-header__apply-btn {
+    display: none;
+    padding: var(--space-2) var(--space-5);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--navy-900);
+    background-color: var(--gold-400);
+    border-radius: var(--border-radius-sm);
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: background-color var(--transition-normal);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .site-header__apply-btn:hover {
+    background-color: var(--gold-500);
+  }
+
+  @media (min-width: 64rem) {
+    .site-header__apply-btn {
+      display: inline-block;
+    }
+  }
+
+  .mobile-nav__apply-btn {
+    display: block;
+    margin: var(--space-4) var(--space-6);
+    padding: var(--space-3) var(--space-6);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    color: var(--navy-900);
+    background-color: var(--gold-400);
+    border-radius: var(--border-radius-sm);
+    text-decoration: none;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .mobile-nav__apply-btn:hover {
+    background-color: var(--gold-500);
+  }
+</style>

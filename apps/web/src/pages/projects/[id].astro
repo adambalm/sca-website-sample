@@ -1,0 +1,227 @@
+---
+/**
+ * Student Project Detail — Public Showcase
+ * Renders rich project content: hero image, body, external links.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { loadQuery } from '../../sanity/lib/load-query';
+import { urlFor } from '../../sanity/lib/image';
+import { PortableText } from 'astro-portabletext';
+
+export const prerender = false;
+
+// ADR-019: intentionally offline — not a bug. See projects/index.astro for details.
+return new Response('Not Found', { status: 404 });
+
+const { id } = Astro.params;
+
+const { data: project } = await loadQuery<any>({
+  query: `*[_type == "studentProject" && visibility == "Public" && (_id == $id || slug.current == $id)][0] {
+    _id,
+    title,
+    slug,
+    summary,
+    body,
+    featuredImage,
+    externalUrl,
+    year,
+    visibility,
+    "studentName": student->name,
+    "programName": program->title
+  }`,
+  params: { id },
+});
+
+if (!project) {
+  return new Response('Not Found', { status: 404 });
+}
+
+const hasImage = !!project.featuredImage?.asset;
+---
+
+<BaseLayout title={project.title || 'Project'} containerClass="project-detail-layout">
+  <!-- Header -->
+  <div class="pd-header">
+    <div class="pd-header__container">
+      <nav class="pd-breadcrumb" aria-label="Breadcrumb">
+        <a href="/projects" class="pd-breadcrumb__link">Student Projects</a>
+        <span class="pd-breadcrumb__separator">/</span>
+        <span class="pd-breadcrumb__current">{project.title || 'Project'}</span>
+      </nav>
+      <h1 class="pd-header__title">{project.title || 'Untitled Project'}</h1>
+      <div class="pd-header__meta">
+        {project.studentName && <span class="pd-header__meta-item">{project.studentName}</span>}
+        {project.programName && <span class="pd-header__meta-item">{project.programName}</span>}
+        {project.year && <span class="pd-header__meta-item">{project.year}</span>}
+      </div>
+    </div>
+  </div>
+
+  <div class="pd-accent-rule" />
+
+  <article class="pd-article">
+    {hasImage && (
+      <figure class="pd-hero-image">
+        <img
+          src={urlFor(project.featuredImage).width(1200).auto('format').url()}
+          alt={project.title}
+          class="pd-hero-image__img"
+        />
+      </figure>
+    )}
+
+    {project.summary && (
+      <p class="pd-summary">{project.summary}</p>
+    )}
+
+    {project.body && project.body.length > 0 && (
+      <div class="pd-body">
+        <PortableText value={project.body} />
+      </div>
+    )}
+
+    {project.externalUrl && (
+      <div class="pd-actions">
+        <a href={project.externalUrl} target="_blank" rel="noopener noreferrer" class="btn btn--primary">
+          View Project &rarr;
+        </a>
+      </div>
+    )}
+  </article>
+</BaseLayout>
+
+<style>
+  @import '../../styles/global.css';
+
+  :global(.main-content:has(.project-detail-layout)) {
+    padding: 0;
+  }
+
+  /* Hero header */
+  .pd-header {
+    background: radial-gradient(ellipse at 30% 20%, rgba(30, 58, 95, 0.6) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(201, 162, 39, 0.08) 0%, transparent 40%),
+                var(--navy-800);
+    color: var(--color-text-inverse);
+    padding: var(--space-24) var(--container-padding) var(--space-12);
+    text-align: center;
+    position: relative;
+    min-height: 360px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .pd-header__container {
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .pd-header__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: #ffffff;
+    line-height: 1.15;
+    margin: 0 0 var(--space-4);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .pd-header__meta {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .pd-header__meta-item {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: rgba(255, 255, 255, 0.75);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Breadcrumb */
+  .pd-breadcrumb {
+    margin-bottom: var(--space-4);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+  }
+
+  .pd-breadcrumb__link,
+  .pd-breadcrumb__link:visited {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: color var(--transition-normal);
+  }
+
+  .pd-breadcrumb__link:hover {
+    color: #ffffff;
+  }
+
+  .pd-breadcrumb__separator {
+    color: rgba(255, 255, 255, 0.3);
+    margin: 0 var(--space-2);
+  }
+
+  .pd-breadcrumb__current {
+    color: var(--gold-400);
+    font-weight: var(--font-weight-medium);
+  }
+
+  /* Gold accent rule */
+  .pd-accent-rule {
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500));
+  }
+
+  /* Article content */
+  .pd-article {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: var(--space-10) var(--container-padding) var(--space-16);
+  }
+
+  .pd-hero-image {
+    margin: 0 0 var(--space-8);
+  }
+
+  .pd-hero-image__img {
+    width: 100%;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .pd-summary {
+    font-size: var(--font-size-lg);
+    color: var(--neutral-new-600);
+    line-height: var(--line-height-relaxed);
+    margin-bottom: var(--space-8);
+    font-style: italic;
+  }
+
+  .pd-body {
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-loose);
+    color: var(--color-text-primary);
+  }
+
+  .pd-actions {
+    margin-top: var(--space-8);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--neutral-new-200);
+  }
+
+  @media (min-width: 48rem) {
+    .pd-header {
+      padding: var(--space-24) var(--container-padding) var(--space-14);
+      min-height: 400px;
+    }
+
+    .pd-header__title {
+      font-size: var(--font-size-4xl);
+    }
+  }
+</style>

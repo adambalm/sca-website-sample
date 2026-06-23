@@ -1,0 +1,348 @@
+---
+/**
+ * Platform Overview — Internal stakeholder page
+ *
+ * Shows non-technical audience the full scope of what's been built,
+ * what's ready now, and what becomes available over time.
+ * Not linked from navigation — shared directly via URL.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+
+<BaseLayout title="Platform Overview" description="SCA digital platform — what's built and what's possible" containerClass="overview-layout" noindex>
+  <div class="ov">
+    <div class="ov-header">
+      <h1 class="ov-header__title">SCA Digital Platform</h1>
+      <p class="ov-header__subtitle">
+        What's been built, what's ready now, and what it means for the team.
+      </p>
+    </div>
+
+    <!-- The Problem -->
+    <section class="ov-section">
+      <h2 class="ov-section__title">Why This Exists</h2>
+      <p>The previous website had no structured way to manage content. Updating a page, posting news, or changing an image required a developer. There was no content model — no organized system describing what kinds of content the school has and how they relate to each other.</p>
+      <p>This platform gives SCA a real content management system. Editors can update text, swap images, add news, and manage pages without writing code or waiting on a developer.</p>
+    </section>
+
+    <!-- Feature Grid -->
+    <section class="ov-section">
+      <h2 class="ov-section__title">What's Here</h2>
+      <p class="ov-section__intro">Each row below is a capability of the platform. Some are ready for launch; others are built and waiting for the right time.</p>
+
+      <div class="ov-grid">
+        <!-- Ready Now -->
+        <div class="ov-card ov-card--ready">
+          <div class="ov-card__status">Ready for launch</div>
+          <h3 class="ov-card__title">Editable Pages</h3>
+          <p class="ov-card__desc">About, Admissions, Academics, Athletics, Student Life, Community, Engagement, Contact — all manageable through the CMS. Text, images, and page sections can be changed by editors.</p>
+        </div>
+
+        <div class="ov-card ov-card--ready">
+          <div class="ov-card__status">Ready for launch</div>
+          <h3 class="ov-card__title">News &amp; Updates</h3>
+          <p class="ov-card__desc">News articles with images, summaries, and dates. Can be created and published directly from the CMS. Chelsea's SCA news project can connect to this system.</p>
+        </div>
+
+        <div class="ov-card ov-card--ready">
+          <div class="ov-card__status">Ready for launch</div>
+          <h3 class="ov-card__title">Navigation &amp; Footer</h3>
+          <p class="ov-card__desc">Menu links, footer sections, and social media links are all CMS-managed. No code changes needed to reorganize the site navigation.</p>
+        </div>
+
+        <div class="ov-card ov-card--ready">
+          <div class="ov-card__status">Ready for launch</div>
+          <h3 class="ov-card__title">Site Settings</h3>
+          <p class="ov-card__desc">School name, address, phone, email, social links, enrollment URL, and announcement banner — all editable in one place.</p>
+        </div>
+
+        <div class="ov-card ov-card--ready">
+          <div class="ov-card__status">Ready for launch</div>
+          <h3 class="ov-card__title">Page Builder</h3>
+          <p class="ov-card__desc">Pages are built from reusable sections — hero banners, text blocks, image galleries, call-to-action bars, testimonials, and more. Editors can rearrange sections without developer help.</p>
+        </div>
+
+        <div class="ov-card ov-card--ready">
+          <div class="ov-card__status">Ready for launch</div>
+          <h3 class="ov-card__title">Accessibility</h3>
+          <p class="ov-card__desc">Text contrast, image descriptions, keyboard navigation, and screen reader support have been audited and corrected across all pages.</p>
+        </div>
+
+        <!-- Available When Ready -->
+        <div class="ov-card ov-card--available">
+          <div class="ov-card__status">Built — launch when ready</div>
+          <h3 class="ov-card__title">Student Projects Showcase</h3>
+          <p class="ov-card__desc">A proof of concept for future submissions, tested with dummy Workspace accounts and sample content.</p>
+        </div>
+
+        <div class="ov-card ov-card--available">
+          <div class="ov-card__status">Built — launch when ready</div>
+          <h3 class="ov-card__title">Faculty &amp; Staff Directory</h3>
+          <p class="ov-card__desc">Person profiles with photos, titles, departments, and bios. Ready to populate with real staff information when the team is prepared.</p>
+        </div>
+
+        <div class="ov-card ov-card--available">
+          <div class="ov-card__status">Built — launch when ready</div>
+          <h3 class="ov-card__title">Events Calendar</h3>
+          <p class="ov-card__desc">Event listings with dates, descriptions, and locations. Schema is in place; content can be added when the school is ready to publish events publicly.</p>
+        </div>
+
+        <div class="ov-card ov-card--available">
+          <div class="ov-card__status">Built — launch when ready</div>
+          <h3 class="ov-card__title">Alumni Stories</h3>
+          <p class="ov-card__desc">A place to feature alumni experiences and outcomes. Structured for quotes, photos, and graduation details.</p>
+        </div>
+
+        <div class="ov-card ov-card--available">
+          <div class="ov-card__status">Built — launch when ready</div>
+          <h3 class="ov-card__title">Visual Editing</h3>
+          <p class="ov-card__desc">Editors can preview changes on the actual website before publishing. Click on any text or image in the preview to jump directly to it in the CMS.</p>
+        </div>
+
+        <!-- Future -->
+        <div class="ov-card ov-card--future">
+          <div class="ov-card__status">Possible next steps</div>
+          <h3 class="ov-card__title">Automated News from Social Media</h3>
+          <p class="ov-card__desc">The system is designed to accept news from external sources (Instagram, external feeds). With some configuration, Chelsea's social media posts could automatically appear as news items on the site.</p>
+        </div>
+
+        <div class="ov-card ov-card--future">
+          <div class="ov-card__status">Possible next steps</div>
+          <h3 class="ov-card__title">Media Galleries</h3>
+          <p class="ov-card__desc">Photo and video galleries for events, campus life, and programs. The content type exists in the CMS; front-end display can be added when there's demand.</p>
+        </div>
+
+        <div class="ov-card ov-card--future">
+          <div class="ov-card__status">Possible next steps</div>
+          <h3 class="ov-card__title">Multi-Language Support</h3>
+          <p class="ov-card__desc">The CMS structure supports adding translated content fields. Useful for SCA's international family audience. Requires content translation work, not code changes.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="ov-section">
+      <h2 class="ov-section__title">How Editing Works</h2>
+      <div class="ov-steps">
+        <div class="ov-step">
+          <div class="ov-step__number">1</div>
+          <div class="ov-step__content">
+            <h3 class="ov-step__title">Log into the CMS</h3>
+            <p>Go to the Studio (a web app) and sign in. No software to install.</p>
+          </div>
+        </div>
+        <div class="ov-step">
+          <div class="ov-step__number">2</div>
+          <div class="ov-step__content">
+            <h3 class="ov-step__title">Find what you want to change</h3>
+            <p>Content is organized by type — pages, news, programs, settings. Click into any item to edit it.</p>
+          </div>
+        </div>
+        <div class="ov-step">
+          <div class="ov-step__number">3</div>
+          <div class="ov-step__content">
+            <h3 class="ov-step__title">Make your changes</h3>
+            <p>Edit text, upload images, rearrange sections. Changes are saved as drafts — nothing goes live until you publish.</p>
+          </div>
+        </div>
+        <div class="ov-step">
+          <div class="ov-step__number">4</div>
+          <div class="ov-step__content">
+            <h3 class="ov-step__title">Publish</h3>
+            <p>When you're satisfied, hit Publish. The website updates within seconds.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- What's Needed -->
+    <section class="ov-section">
+      <h2 class="ov-section__title">What's Needed From the Team</h2>
+      <ul class="ov-list">
+        <li>Review the site content for accuracy — facts, dates, names, descriptions</li>
+        <li>Flag images that should be replaced with better or more current photos</li>
+        <li>Identify any pages or sections that are missing or don't make sense</li>
+        <li>Decide which sections (Student Projects, Faculty, Events) to include at launch</li>
+        <li>Coordinate DNS cutover with the authorized account owner.</li>
+      </ul>
+    </section>
+
+  </div>
+</BaseLayout>
+
+<style>
+  @import '../../styles/global.css';
+
+  :global(.main-content:has(.overview-layout)) {
+    padding: 0;
+  }
+
+  .ov {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--container-padding) var(--space-20);
+  }
+
+  .ov-header {
+    padding: var(--space-16) 0 var(--space-8);
+    border-bottom: 3px solid var(--gold-500);
+    margin-bottom: var(--space-12);
+  }
+
+  .ov-header__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-4xl);
+    color: var(--navy-900);
+    margin: 0 0 var(--space-3);
+  }
+
+  .ov-header__subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--neutral-new-600);
+    margin: 0;
+    line-height: var(--line-height-relaxed);
+  }
+
+  .ov-section {
+    margin-bottom: var(--space-16);
+  }
+
+  .ov-section__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    color: var(--navy-800);
+    margin: 0 0 var(--space-4);
+  }
+
+  .ov-section__intro {
+    color: var(--neutral-new-600);
+    margin-bottom: var(--space-8);
+  }
+
+  .ov-section p {
+    line-height: var(--line-height-relaxed);
+    margin: 0 0 var(--space-4);
+    color: var(--neutral-new-900);
+  }
+
+  /* Feature Grid */
+  .ov-grid {
+    display: grid;
+    gap: var(--space-5);
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 40rem) {
+    .ov-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .ov-card {
+    border: 1px solid var(--neutral-new-200);
+    border-radius: 10px;
+    padding: var(--space-5) var(--space-6);
+    border-top: 3px solid var(--neutral-new-200);
+  }
+
+  .ov-card--ready {
+    border-top-color: var(--gold-500);
+  }
+
+  .ov-card--available {
+    border-top-color: var(--navy-600);
+  }
+
+  .ov-card--future {
+    border-top-color: var(--neutral-new-300);
+    opacity: 0.85;
+  }
+
+  .ov-card__status {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--space-2);
+  }
+
+  .ov-card--ready .ov-card__status {
+    color: var(--gold-600);
+  }
+
+  .ov-card--available .ov-card__status {
+    color: var(--navy-600);
+  }
+
+  .ov-card--future .ov-card__status {
+    color: var(--neutral-new-600);
+  }
+
+  .ov-card__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-lg);
+    color: var(--navy-800);
+    margin: 0 0 var(--space-2);
+  }
+
+  .ov-card__desc {
+    font-size: var(--font-size-sm);
+    color: var(--neutral-new-600);
+    line-height: var(--line-height-relaxed);
+    margin: 0;
+  }
+
+  /* Steps */
+  .ov-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .ov-step {
+    display: flex;
+    gap: var(--space-5);
+    align-items: flex-start;
+  }
+
+  .ov-step__number {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--navy-800);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-family-sans);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-base);
+  }
+
+  .ov-step__title {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--navy-800);
+    margin: 0 0 var(--space-1);
+  }
+
+  .ov-step__content p {
+    font-size: var(--font-size-sm);
+    color: var(--neutral-new-600);
+    margin: 0;
+  }
+
+  /* List */
+  .ov-list {
+    padding-left: var(--space-6);
+    line-height: var(--line-height-relaxed);
+  }
+
+  .ov-list li {
+    margin-bottom: var(--space-3);
+    color: var(--neutral-new-900);
+  }
+</style>

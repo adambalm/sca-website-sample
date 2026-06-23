@@ -1,0 +1,15 @@
+{
+  "name": "sca-scripts",
+  "version": "1.0.0",
+  "description": "Automation Scripts for SCA Website",
+  "scripts": {
+    "start:gam": "node gam-watch-agent.js",
+    "import:dry-run": "node import-news-to-sanity.mjs --dry-run",
+    "import:images": "node import-news-to-sanity.mjs --images-only",
+    "import:create": "node import-news-to-sanity.mjs --create"
+  },
+  "dependencies": {
+    "@sanity/client": "^6.0.0",
+    "dotenv": "^16.0.0"
+  }
+}

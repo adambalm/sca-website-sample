@@ -1,0 +1,117 @@
+---
+import { stegaClean } from '@sanity/client/stega'
+
+interface Props {
+  section: any
+  headingLevel: string
+}
+
+const { section, headingLevel } = Astro.props
+const HeadingTag = headingLevel as any
+const variant = stegaClean(section.variant) || 'navy'
+const stats = section.stats || []
+---
+
+<section class:list={['sr-section', `sr-section--${variant}`]}>
+  <div class="sr-section__container">
+    {section.heading && (
+      <HeadingTag class="sr-section__heading">{section.heading}</HeadingTag>
+    )}
+    <div class="sr-section__grid">
+      {stats.map((stat: any) => (
+        <div class="sr-section__item" data-key={stat._key}>
+          <span class="sr-section__value">{stat.value}</span>
+          <span class="sr-section__label">{stat.label}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .sr-section {
+    padding: var(--space-12) 0;
+  }
+
+  .sr-section--navy {
+    background-color: var(--navy-900);
+    color: var(--color-text-inverse);
+  }
+
+  .sr-section--light {
+    background-color: var(--neutral-new-50);
+    color: var(--navy-900);
+  }
+
+  .sr-section__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+    padding: 0 var(--container-padding);
+  }
+
+  .sr-section__heading {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    text-align: center;
+    margin: 0 0 var(--space-8);
+  }
+
+  .sr-section--navy .sr-section__heading {
+    color: var(--color-text-inverse);
+  }
+
+  .sr-section--light .sr-section__heading {
+    color: var(--navy-900);
+  }
+
+  .sr-section__grid {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .sr-section__item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .sr-section__value {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
+    color: var(--gold-400);
+  }
+
+  .sr-section--light .sr-section__value {
+    color: var(--gold-600);
+  }
+
+  .sr-section__label {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .sr-section--navy .sr-section__label {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .sr-section--light .sr-section__label {
+    color: var(--neutral-new-600);
+  }
+
+  @media (min-width: 48rem) {
+    .sr-section__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .sr-section__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+</style>

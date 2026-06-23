@@ -1,0 +1,157 @@
+---
+import { stegaClean } from '@sanity/client/stega'
+
+interface Props {
+  section: any
+  headingLevel: string
+}
+
+const { section, headingLevel } = Astro.props
+const HeadingTag = headingLevel as any
+const variant = stegaClean(section.variant) || 'navy'
+---
+
+<section class:list={['cta-banner', `cta-banner--${variant}`]}>
+  <div class="cta-banner__container">
+    <div class="cta-banner__rule" />
+    <HeadingTag class="cta-banner__heading">{section.heading}</HeadingTag>
+    {section.subtitle && (
+      <p class="cta-banner__subtitle">{section.subtitle}</p>
+    )}
+    {(section.primaryCta?.label || section.secondaryCta?.label) && (
+      <div class="cta-banner__actions">
+        {section.primaryCta?.label && (
+          <a href={section.primaryCta.href} class="btn btn--primary btn--lg">
+            {section.primaryCta.label}
+          </a>
+        )}
+        {section.secondaryCta?.label && (
+          <a href={section.secondaryCta.href} class:list={[
+            'btn btn--lg',
+            variant === 'light' ? 'btn--secondary' : 'btn--secondary-light',
+          ]}>
+            {section.secondaryCta.label}
+          </a>
+        )}
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .cta-banner {
+    padding: var(--space-24) var(--container-padding);
+    text-align: center;
+  }
+
+  .cta-banner--navy {
+    background: radial-gradient(ellipse at 50% 0%, rgba(30, 58, 95, 0.5) 0%, transparent 60%),
+                var(--navy-900);
+    color: var(--color-text-inverse);
+  }
+
+  .cta-banner--gold {
+    background: var(--gold-500);
+    color: var(--navy-900);
+  }
+
+  .cta-banner--light {
+    background: var(--neutral-new-50);
+    color: var(--navy-900);
+  }
+
+  .cta-banner__container {
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+  }
+
+  .cta-banner__rule {
+    width: 60px;
+    height: 3px;
+    background: var(--gold-500);
+    margin: 0 auto var(--space-8);
+    border-radius: 2px;
+  }
+
+  .cta-banner--gold .cta-banner__rule {
+    background: var(--navy-900);
+  }
+
+  .cta-banner__heading {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    margin: 0 0 var(--space-4);
+  }
+
+  .cta-banner--navy .cta-banner__heading,
+  .cta-banner--gold .cta-banner__heading {
+    color: inherit;
+  }
+
+  .cta-banner--light .cta-banner__heading {
+    color: var(--navy-900);
+  }
+
+  .cta-banner__subtitle {
+    font-size: var(--font-size-lg);
+    max-width: 55ch;
+    margin: 0 auto var(--space-10);
+    line-height: var(--line-height-relaxed);
+  }
+
+  .cta-banner--navy .cta-banner__subtitle {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .cta-banner--gold .cta-banner__subtitle {
+    color: var(--navy-700);
+  }
+
+  .cta-banner--light .cta-banner__subtitle {
+    color: var(--neutral-new-600);
+  }
+
+  .cta-banner__actions {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* Navy variant: white text on transparent with light border */
+  .cta-banner--navy .cta-banner__actions :global(.btn--secondary-light) {
+    background-color: transparent;
+    color: var(--color-text-inverse);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .cta-banner--navy .cta-banner__actions :global(.btn--secondary-light:visited) {
+    color: var(--color-text-inverse);
+  }
+
+  .cta-banner--navy .cta-banner__actions :global(.btn--secondary-light:hover) {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.7);
+    color: var(--color-text-inverse);
+  }
+
+  /* Gold variant: dark text on gold */
+  .cta-banner--gold .cta-banner__actions :global(.btn--secondary-light) {
+    color: var(--navy-900);
+    border-color: var(--navy-900);
+  }
+
+  .cta-banner--gold .cta-banner__actions :global(.btn--secondary-light:visited) {
+    color: var(--navy-900);
+  }
+
+  .cta-banner--gold .cta-banner__actions :global(.btn--secondary-light:hover) {
+    background-color: rgba(0, 0, 0, 0.08);
+  }
+
+  @media (min-width: 48rem) {
+    .cta-banner__heading {
+      font-size: var(--font-size-4xl);
+    }
+  }
+</style>

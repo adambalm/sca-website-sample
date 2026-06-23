@@ -1,0 +1,106 @@
+---
+/**
+ * HeroSection — section-builder block that wraps PageHero.
+ * Used in the sections[] array of page documents.
+ */
+import PageHero from '../PageHero.astro'
+import { stegaClean } from '@sanity/client/stega'
+
+interface Props {
+  section: any
+  headingLevel: string
+}
+
+const { section, headingLevel } = Astro.props
+const HeadingTag = headingLevel as any
+const opacity = stegaClean(section.overlayOpacity) ?? 50
+---
+
+<PageHero
+  image={section.image}
+  overlayOpacity={opacity}
+>
+  {section.eyebrow && (
+    <p class="hero-section__eyebrow">{section.eyebrow}</p>
+  )}
+  <HeadingTag class="hero-section__heading">{section.heading}</HeadingTag>
+  {section.subtitle && (
+    <p class="hero-section__subtitle">{section.subtitle}</p>
+  )}
+  {(section.primaryCta?.label || section.secondaryCta?.label) && (
+    <div class="hero-section__actions">
+      {section.primaryCta?.label && (
+        <a href={section.primaryCta.href} class="btn btn--primary btn--lg">
+          {section.primaryCta.label}
+        </a>
+      )}
+      {section.secondaryCta?.label && (
+        <a href={section.secondaryCta.href} class="btn btn--secondary-light btn--lg">
+          {section.secondaryCta.label}
+        </a>
+      )}
+    </div>
+  )}
+</PageHero>
+
+<style>
+  .hero-section__eyebrow {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--gold-400);
+    margin-bottom: var(--space-6);
+  }
+
+  .hero-section__heading {
+    font-family: var(--font-family-heading);
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 var(--space-6);
+    color: #ffffff;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .hero-section__subtitle {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-lg);
+    line-height: var(--line-height-relaxed);
+    color: rgba(255, 255, 255, 0.8);
+    max-width: 50ch;
+    margin: 0 auto var(--space-10);
+  }
+
+  .hero-section__actions {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .hero-section__actions :global(.btn--secondary-light) {
+    background-color: transparent;
+    color: var(--color-text-inverse);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .hero-section__actions :global(.btn--secondary-light:hover) {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.7);
+    color: var(--color-text-inverse);
+  }
+
+  @media (min-width: 48rem) {
+    .hero-section__heading {
+      font-size: 3.5rem;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .hero-section__heading {
+      font-size: 4rem;
+    }
+  }
+</style>

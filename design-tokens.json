@@ -1,0 +1,196 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "$description": "Design tokens for Springfield Commonwealth Academy website. W3C DTCG 2025.10 format. Source of truth is apps/web/src/styles/global.css and themes/*.css; this file mirrors the default theme for tool consumption. The alt theme is documented in DESIGN.md.",
+
+  "color": {
+    "$type": "color",
+    "navy": {
+      "900": { "$value": "#0A1628" },
+      "800": { "$value": "#0d1b2a" },
+      "700": { "$value": "#1e3a5f" },
+      "600": { "$value": "#2c5d8a" },
+      "500": { "$value": "#3d7ab8" }
+    },
+    "gold": {
+      "600": { "$value": "#A68520" },
+      "500": { "$value": "#C9A227" },
+      "400": { "$value": "#D4B43A" },
+      "300": { "$value": "#E0C85C" }
+    },
+    "neutral": {
+      "900": { "$value": "#1A1F2A" },
+      "800": { "$value": "#2A3441" },
+      "600": { "$value": "#5A6A7A" },
+      "300": { "$value": "#D1D9E2" },
+      "200": { "$value": "#E8ECF2" },
+      "100": { "$value": "#F5F7FA" },
+      "50":  { "$value": "#FAFBFC" }
+    },
+    "accent": {
+      "success":   { "$value": "#2e7d4a" },
+      "successBg": { "$value": "#e8f5ec" },
+      "warning":   { "$value": "#8a6914" },
+      "warningBg": { "$value": "#fef9e7" },
+      "error":     { "$value": "#b32b2b" },
+      "errorBg":   { "$value": "#fdeaea" }
+    },
+    "text": {
+      "primary":   { "$value": "{color.neutral.900}", "$description": "Body text on light backgrounds." },
+      "secondary": { "$value": "{color.neutral.600}" },
+      "muted":     { "$value": "{color.neutral.600}" },
+      "inverse":   { "$value": "#ffffff", "$description": "Text on dark surfaces and hero overlays." }
+    },
+    "background": {
+      "base":     { "$value": "#ffffff" },
+      "alt":      { "$value": "{color.neutral.50}" },
+      "elevated": { "$value": "#ffffff" }
+    },
+    "border": {
+      "base":  { "$value": "{color.neutral.200}" },
+      "light": { "$value": "{color.neutral.100}" }
+    },
+    "link": {
+      "base":    { "$value": "{color.navy.600}" },
+      "hover":   { "$value": "{color.navy.700}" },
+      "visited": { "$value": "{color.navy.800}" }
+    },
+    "focusRing": { "$value": "{color.gold.500}" }
+  },
+
+  "fontFamily": {
+    "$type": "fontFamily",
+    "heading": { "$value": ["Cormorant Garamond", "Georgia", "Times New Roman", "serif"] },
+    "sans":    { "$value": ["Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"] },
+    "mono":    { "$value": ["SF Mono", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"] },
+    "base":    { "$value": "{fontFamily.sans}" }
+  },
+
+  "fontSize": {
+    "$type": "dimension",
+    "$description": "Mobile-first scale, 16px base.",
+    "xs":  { "$value": "0.75rem" },
+    "sm":  { "$value": "0.875rem" },
+    "base":{ "$value": "1rem" },
+    "lg":  { "$value": "1.125rem" },
+    "xl":  { "$value": "1.25rem" },
+    "2xl": { "$value": "1.5rem" },
+    "3xl": { "$value": "1.875rem" },
+    "4xl": { "$value": "2.25rem" },
+    "5xl": { "$value": "3rem" }
+  },
+
+  "lineHeight": {
+    "$type": "number",
+    "tight":   { "$value": 1.25 },
+    "snug":    { "$value": 1.375 },
+    "normal":  { "$value": 1.5 },
+    "relaxed": { "$value": 1.625 },
+    "loose":   { "$value": 1.75 }
+  },
+
+  "fontWeight": {
+    "$type": "fontWeight",
+    "normal":   { "$value": 400 },
+    "medium":   { "$value": 500 },
+    "semibold": { "$value": 600 },
+    "bold":     { "$value": 700 }
+  },
+
+  "spacing": {
+    "$type": "dimension",
+    "1":  { "$value": "0.25rem" },
+    "2":  { "$value": "0.5rem" },
+    "3":  { "$value": "0.75rem" },
+    "4":  { "$value": "1rem" },
+    "5":  { "$value": "1.25rem" },
+    "6":  { "$value": "1.5rem" },
+    "8":  { "$value": "2rem" },
+    "10": { "$value": "2.5rem" },
+    "12": { "$value": "3rem" },
+    "14": { "$value": "3.5rem" },
+    "16": { "$value": "4rem" },
+    "20": { "$value": "5rem" },
+    "24": { "$value": "6rem" }
+  },
+
+  "aspectRatio": {
+    "$type": "number",
+    "$description": "Ratios are semantic, not descriptive — hero/banner/card/split. See DESIGN.md for usage guidance.",
+    "hero":   { "$value": 2,    "$description": "2/1, full-width homepage hero, source 1920×960" },
+    "banner": { "$value": 2.5,  "$description": "5/2, interior page headers and news article hero, source 1600×640" },
+    "card":   { "$value": 1.5,  "$description": "3/2, news cards and card grid thumbnails, source 600×400" },
+    "split":  { "$value": 1.333,"$description": "4/3, text+image two-column sections, source 1200×900" },
+    "profile":{ "$value": 1,    "$description": "Square headshots — apply aspect-ratio: 1 directly, no token needed" }
+  },
+
+  "layoutWidth": {
+    "$type": "dimension",
+    "content": { "$value": "42rem", "$description": "Optimal reading width for longform text." },
+    "wide":    { "$value": "64rem" },
+    "full":    { "$value": "80rem" }
+  },
+
+  "containerPadding": {
+    "$type": "dimension",
+    "default": { "$value": "1rem", "$description": "Aliased to {spacing.4} in CSS via --container-padding." }
+  },
+
+  "radius": {
+    "$type": "dimension",
+    "sm": { "$value": "0.25rem" },
+    "md": { "$value": "0.375rem" },
+    "lg": { "$value": "0.5rem" }
+  },
+
+  "borderWidth": {
+    "$type": "dimension",
+    "default": { "$value": "1px" }
+  },
+
+  "shadow": {
+    "$type": "shadow",
+    "sm": {
+      "$value": {
+        "color": "rgba(0, 0, 0, 0.05)",
+        "offsetX": "0",
+        "offsetY": "1px",
+        "blur": "2px",
+        "spread": "0"
+      }
+    },
+    "md": {
+      "$value": [
+        { "color": "rgba(0, 0, 0, 0.1)", "offsetX": "0", "offsetY": "4px", "blur": "6px",  "spread": "-1px" },
+        { "color": "rgba(0, 0, 0, 0.1)", "offsetX": "0", "offsetY": "2px", "blur": "4px",  "spread": "-2px" }
+      ]
+    },
+    "lg": {
+      "$value": [
+        { "color": "rgba(0, 0, 0, 0.1)", "offsetX": "0", "offsetY": "10px", "blur": "15px", "spread": "-3px" },
+        { "color": "rgba(0, 0, 0, 0.1)", "offsetX": "0", "offsetY": "4px",  "blur": "6px",  "spread": "-4px" }
+      ]
+    }
+  },
+
+  "duration": {
+    "$type": "duration",
+    "fast":   { "$value": "150ms" },
+    "normal": { "$value": "200ms" },
+    "slow":   { "$value": "300ms" }
+  },
+
+  "easing": {
+    "$type": "cubicBezier",
+    "default": { "$value": [0.25, 0.1, 0.25, 1], "$description": "CSS ease — applied with durations above." }
+  },
+
+  "breakpoint": {
+    "$type": "dimension",
+    "$description": "Min-width breakpoints used across the codebase. CSS is mobile-first.",
+    "sm":  { "$value": "30rem" },
+    "md":  { "$value": "48rem" },
+    "lg":  { "$value": "64rem" },
+    "xl":  { "$value": "80rem" },
+    "2xl": { "$value": "96rem" }
+  }
+}

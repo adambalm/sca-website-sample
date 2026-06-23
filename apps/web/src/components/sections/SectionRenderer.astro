@@ -1,0 +1,60 @@
+---
+/**
+ * SectionRenderer — Maps Sanity section _type to the correct Astro component.
+ *
+ * Receives the full sections array and renders each block with the appropriate
+ * component. First heroSection gets <h1>, all others get <h2>.
+ *
+ * To add a new section type: import the component and add an entry to SECTION_MAP.
+ */
+import HeroSection from './HeroSection.astro'
+import TextWithImage from './TextWithImage.astro'
+import CardGrid from './CardGrid.astro'
+import CtaBanner from './CtaBanner.astro'
+import RichTextSection from './RichTextSection.astro'
+import StatsRow from './StatsRow.astro'
+import TestimonialBlock from './TestimonialBlock.astro'
+import AccordionSection from './AccordionSection.astro'
+import UpcomingEvents from './UpcomingEvents.astro'
+import LatestNews from './LatestNews.astro'
+import VideoEmbed from './VideoEmbed.astro'
+
+const SECTION_MAP: Record<string, any> = {
+  heroSection: HeroSection,
+  textWithImage: TextWithImage,
+  cardGrid: CardGrid,
+  ctaBanner: CtaBanner,
+  richText: RichTextSection,
+  statsRow: StatsRow,
+  testimonialBlock: TestimonialBlock,
+  accordionSection: AccordionSection,
+  upcomingEvents: UpcomingEvents,
+  latestNews: LatestNews,
+  videoEmbed: VideoEmbed,
+}
+
+interface Props {
+  sections: any[]
+}
+
+const { sections } = Astro.props
+
+// Pre-compute heading levels: first heroSection gets h1, rest get h2
+let heroSeen = false
+const resolved = sections.map((section: any) => {
+  let headingLevel = 'h2'
+  if (section._type === 'heroSection' && !heroSeen) {
+    headingLevel = 'h1'
+    heroSeen = true
+  }
+  return { section, headingLevel, Component: SECTION_MAP[section._type] }
+})
+---
+
+{resolved.map(({ section, headingLevel, Component }) =>
+  Component && (
+    <div data-section-key={section._key}>
+      <Component section={section} headingLevel={headingLevel} />
+    </div>
+  )
+)}

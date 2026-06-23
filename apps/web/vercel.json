@@ -1,0 +1,26 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "astro",
+  "installCommand": "npm install",
+  "redirects": [
+    { "source": "/about-us-2", "destination": "/about", "permanent": true },
+    { "source": "/academics-2", "destination": "/academics", "permanent": true },
+    { "source": "/athletics-3", "destination": "/athletics", "permanent": true },
+    { "source": "/student-life-3", "destination": "/student-life", "permanent": true },
+    { "source": "/news-events", "destination": "/news", "permanent": true },
+    { "source": "/about-us/history", "destination": "/about/history", "permanent": true },
+    { "source": "/about-us/vision-mission", "destination": "/about/vision", "permanent": true },
+    { "source": "/about-us/campus-guardian-alliance", "destination": "/about/guardian-alliance", "permanent": true },
+    { "source": "/academics/signature-courses", "destination": "/academics/signature", "permanent": true },
+    { "source": "/academics/special-programs", "destination": "/academics/special", "permanent": true },
+    { "source": "/academics/future-study-career-development", "destination": "/academics/future-study", "permanent": true },
+    { "source": "/academics/faculty", "destination": "/about", "permanent": true },
+    { "source": "/athletics/athletic-philosophy", "destination": "/athletics/philosophy", "permanent": true },
+
+    { "source": "/alumni-success", "destination": "/engagement", "permanent": true },
+    { "source": "/community", "destination": "/about", "permanent": true },
+    { "source": "/basketball-alumni", "destination": "/athletics/basketball-alumni", "permanent": true }
+  ]
+}

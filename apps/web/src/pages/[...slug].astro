@@ -1,0 +1,535 @@
+---
+/**
+ * Catch-all content route - Maps URL paths to Sanity pages and programs
+ *
+ * Handles all page and program routes via a URL-to-Sanity-slug mapping.
+ * Uses SSR so new/updated content is immediately available.
+ *
+ * Pages with a `sections[]` array render full-bleed section components.
+ * Pages with only `body` render in the classic 720px article layout.
+ */
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHero from '../components/PageHero.astro';
+import PortableText from '../components/PortableText.astro';
+import SectionRenderer from '../components/sections/SectionRenderer.astro';
+import { sanityClient } from 'sanity:client';
+import { loadQuery } from '../sanity/lib/load-query';
+import { urlFor } from '../sanity/lib/image';
+
+export const prerender = false;
+
+// ============================================================================
+// URL → Sanity Document Mapping
+// ============================================================================
+// Legacy routes where the URL path doesn't match the Sanity slug, or where
+// custom breadcrumbs are needed. New pages created in Sanity with a matching
+// slug are routed automatically via the dynamic fallback below.
+
+interface RouteMapping {
+  type: 'page' | 'program';
+  slug: string;
+  breadcrumb: string[];
+}
+
+const ROUTE_MAP: Record<string, RouteMapping> = {
+  // Pages with non-matching slugs or custom breadcrumbs
+  'about/history':            { type: 'page',    slug: 'history',                     breadcrumb: ['About', 'Our History'] },
+  'about/vision':             { type: 'page',    slug: 'vision-mission',              breadcrumb: ['About', 'Vision & Mission'] },
+  'about/guardian-alliance':  { type: 'page',    slug: 'campus-guardian-alliance',     breadcrumb: ['About', 'Guardian Alliance'] },
+  'engagement':               { type: 'page',    slug: 'alumni-success',              breadcrumb: ['Engagement & Highlights'] },
+
+  // Programs - Academic
+  'academics/signature':             { type: 'program', slug: 'signature-courses',               breadcrumb: ['Academics', 'Signature Courses'] },
+  'academics/special':               { type: 'program', slug: 'special-programs',                breadcrumb: ['Academics', 'Special Programs'] },
+  'academics/future-study':          { type: 'program', slug: 'future-study-career-development', breadcrumb: ['Academics', 'Future Study'] },
+
+  // Programs - Athletic
+  'athletics/basketball':     { type: 'program', slug: 'boys-basketball',             breadcrumb: ['Athletics', 'Boys Basketball'] },
+  'athletics/soccer':         { type: 'program', slug: 'soccer',                      breadcrumb: ['Athletics', 'Soccer'] },
+  'athletics/philosophy':     { type: 'program', slug: 'athletic-philosophy',          breadcrumb: ['Athletics', 'Philosophy'] },
+  'athletics/ncaa-pathway':   { type: 'program', slug: 'ncaa-pathway',                breadcrumb: ['Athletics', 'NCAA Pathway'] },
+};
+
+// Shared GROQ projection for pages — fetches both body and sections
+const PAGE_PROJECTION = `{
+  _id, title, slug, body, image, seo, parent->{title, slug},
+  sections[]{
+    _key,
+    _type,
+    ...
+  }
+}`;
+
+// ============================================================================
+// Route Resolution
+// ============================================================================
+
+const { slug } = Astro.params;
+const urlPath = slug || '';
+
+let doc: any = null;
+let docType: 'page' | 'program' = 'page';
+let breadcrumb: string[] = [];
+
+const route = ROUTE_MAP[urlPath];
+
+if (route) {
+  // Legacy mapped route — slug differs from URL path
+  docType = route.type;
+  breadcrumb = route.breadcrumb;
+
+  if (route.type === 'page') {
+    const result = await loadQuery<any>({
+      query: `*[_type == "page" && slug.current == $slug][0] ${PAGE_PROJECTION}`,
+      params: { slug: route.slug },
+    });
+    doc = result.data;
+  } else {
+    const result = await loadQuery<any>({
+      query: `*[_type == "program" && slug.current == $slug][0] {
+        _id, name, slug, category, description, image, level,
+        externalRosterUrl, collegePlacementSummary,
+        sections[]{ _key, _type, ... }
+      }`,
+      params: { slug: route.slug },
+    });
+    doc = result.data;
+  }
+} else {
+  // Dynamic fallback — try Sanity using the URL path as the slug
+  const result = await loadQuery<any>({
+    query: `*[(_type == "page" || _type == "program") && slug.current == $slug][0] {
+      _id, _type, title, name, slug, body, description, seo, category, image,
+      level, externalRosterUrl, collegePlacementSummary, parent->{title, slug},
+      sections[]{
+        _key,
+        _type,
+        ...
+      }
+    }`,
+    params: { slug: urlPath },
+  });
+  doc = result.data;
+
+  if (doc) {
+    docType = doc._type as 'page' | 'program';
+    breadcrumb = [doc.title || doc.name || urlPath];
+  }
+}
+
+if (!doc) {
+  return new Response('Not Found', { status: 404 });
+}
+
+// Page metadata
+const title = docType === 'page' ? doc.title : doc.name;
+const bodyContent = docType === 'page' ? doc.body : doc.description;
+const seo = doc.seo || null;
+const pageTitle = seo?.title || title;
+const pageDescription = seo?.description || `${title} - Springfield Commonwealth Academy`;
+
+// Determine if this page uses the sections-based layout
+const hasSections = doc.sections && doc.sections.length > 0;
+const firstSectionIsHero = hasSections && doc.sections[0]._type === 'heroSection';
+
+// Breadcrumb parent link (only used in classic layout)
+const parentCrumb = breadcrumb.length > 1
+  ? { label: breadcrumb[0], href: `/${urlPath.split('/')[0]}` }
+  : null;
+
+// Category badge for programs
+const categoryLabel = doc.category === 'academic' ? 'Academic Program'
+  : doc.category === 'athletic' ? 'Athletic Program'
+  : doc.category === 'special' ? 'Special Program'
+  : null;
+
+// Choose layout class
+const layoutClass = hasSections ? 'sections-layout' : 'cp-layout';
+
+// OG image from hero or first section hero
+const heroImage = doc.image || (firstSectionIsHero && doc.sections[0].image);
+const pageOgImage = heroImage?.asset
+  ? urlFor(heroImage).width(1200).height(630).auto('format').url()
+  : undefined;
+
+// BreadcrumbList schema
+const SITE_URL = 'https://www.springfieldcommonwealthacademy.org';
+const breadcrumbSchema = breadcrumb.length > 1 ? {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+    { '@type': 'ListItem', position: 2, name: breadcrumb[0], item: `${SITE_URL}/${urlPath.split('/')[0]}` },
+    { '@type': 'ListItem', position: 3, name: breadcrumb[breadcrumb.length - 1] },
+  ],
+} : undefined;
+---
+
+<BaseLayout title={pageTitle} description={pageDescription} containerClass={layoutClass} ogImage={pageOgImage} schema={breadcrumbSchema}>
+  {hasSections ? (
+    <!-- Sections-based layout: full-bleed section components -->
+    <SectionRenderer sections={doc.sections} />
+  ) : (
+    <!-- Classic body-only layout — branded header + article + CTA -->
+    <Fragment>
+      <PageHero image={doc.image} overlayOpacity={doc.overlayOpacity} class="cp-header">
+        {parentCrumb && (
+          <nav class="cp-breadcrumb" aria-label="Breadcrumb">
+            <a href={parentCrumb.href} class="cp-breadcrumb__link">{parentCrumb.label}</a>
+            <span class="cp-breadcrumb__separator">/</span>
+            <span class="cp-breadcrumb__current">{route?.breadcrumb[route.breadcrumb.length - 1] || title}</span>
+          </nav>
+        )}
+        {categoryLabel && (
+          <span class="cp-header__category">{categoryLabel}</span>
+        )}
+        <h1 class="cp-header__title">{title}</h1>
+      </PageHero>
+
+      <div class="cp-accent-rule" />
+
+      <article class="cp-article">
+        {bodyContent && bodyContent.length > 0 && (
+          <div class="cp-article__body">
+            <PortableText value={bodyContent} />
+          </div>
+        )}
+
+        {doc.collegePlacementSummary && (
+          <aside class="cp-article__sidebar-box">
+            <h3>College Placement</h3>
+            <p>{doc.collegePlacementSummary}</p>
+          </aside>
+        )}
+
+        {doc.externalRosterUrl && (
+          <div class="cp-article__cta">
+            <a href={doc.externalRosterUrl} target="_blank" rel="noopener noreferrer" class="btn btn--primary btn--lg">
+              View Roster & Schedule &rarr;
+            </a>
+          </div>
+        )}
+      </article>
+
+      <section class="cp-footer-cta">
+        <div class="cp-footer-cta__container">
+          <h2 class="cp-footer-cta__heading">Explore Springfield Commonwealth Academy</h2>
+          <p class="cp-footer-cta__subtitle">Discover our programs, campus life, and what makes SCA special.</p>
+          <div class="cp-footer-cta__actions">
+            <a href="/admissions" class="btn btn--primary btn--lg">Apply Now</a>
+            <a href="/contact" class="btn btn--secondary-light btn--lg">Contact Us</a>
+          </div>
+        </div>
+      </section>
+    </Fragment>
+  )}
+</BaseLayout>
+
+<style>
+  @import '../styles/global.css';
+
+  /* Remove main-content padding for full-bleed layouts */
+  :global(.main-content:has(.cp-layout)),
+  :global(.main-content:has(.sections-layout)) {
+    padding: 0;
+  }
+
+  /* ================================================================
+   * Page Header — branded navy gradient (matches hero sections)
+   * For programs with images, the image becomes the background.
+   * ================================================================ */
+  .cp-header {
+    background-color: var(--navy-800);
+    background-image: radial-gradient(ellipse at 30% 20%, rgba(30, 58, 95, 0.6) 0%, transparent 50%),
+                      radial-gradient(ellipse at 70% 80%, rgba(201, 162, 39, 0.08) 0%, transparent 40%);
+    color: var(--color-text-inverse);
+    padding: var(--space-24) var(--container-padding) var(--space-12);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    min-height: 360px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .cp-header__container {
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+  }
+
+  .cp-header__category {
+    display: inline-block;
+    padding: var(--space-1) var(--space-3);
+    margin-bottom: var(--space-4);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--navy-900);
+    background: var(--gold-400);
+    border-radius: var(--border-radius-sm);
+  }
+
+  .cp-header__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: #ffffff;
+    line-height: 1.15;
+    margin: 0;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Breadcrumb — light on dark */
+  .cp-breadcrumb {
+    margin-bottom: var(--space-4);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+  }
+
+  .cp-breadcrumb__link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: color var(--transition-normal);
+  }
+
+  .cp-breadcrumb__link:hover {
+    color: #ffffff;
+  }
+
+  .cp-breadcrumb__separator {
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0 var(--space-2);
+  }
+
+  .cp-breadcrumb__current {
+    color: var(--gold-400);
+    font-weight: var(--font-weight-medium);
+  }
+
+  /* Gold accent rule between header and content */
+  .cp-accent-rule {
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500));
+  }
+
+  /* ================================================================
+   * Article — refined typography and spacing
+   * ================================================================ */
+  .cp-article {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: var(--space-10) var(--container-padding) var(--space-6);
+  }
+
+  /* Body */
+  .cp-article__body {
+    font-size: var(--font-size-base);
+    line-height: 1.8;
+    color: var(--neutral-new-700);
+  }
+
+  .cp-article__body :global(h2) {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    color: var(--navy-800);
+    margin: var(--space-10) 0 var(--space-4);
+    padding-top: var(--space-6);
+    border-top: 2px solid var(--neutral-new-100);
+  }
+
+  .cp-article__body :global(h2:first-child) {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+  }
+
+  .cp-article__body :global(h3) {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    color: var(--navy-700);
+    margin: var(--space-8) 0 var(--space-3);
+  }
+
+  .cp-article__body :global(h4) {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    color: var(--navy-800);
+    margin: var(--space-6) 0 var(--space-2);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .cp-article__body :global(p) {
+    margin: 0 0 var(--space-5);
+  }
+
+  .cp-article__body :global(ul),
+  .cp-article__body :global(ol) {
+    margin: 0 0 var(--space-5);
+    padding-left: var(--space-6);
+  }
+
+  .cp-article__body :global(li) {
+    margin-bottom: var(--space-2);
+  }
+
+  .cp-article__body :global(a) {
+    color: var(--navy-600);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--gold-400);
+    transition: color var(--transition-normal);
+  }
+
+  .cp-article__body :global(a:hover) {
+    color: var(--navy-800);
+    text-decoration-color: var(--gold-600);
+  }
+
+  .cp-article__body :global(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--border-radius-md);
+    margin: var(--space-6) 0;
+  }
+
+  .cp-article__body :global(strong) {
+    color: var(--neutral-new-900);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .cp-article__body :global(blockquote) {
+    border-left: 4px solid var(--gold-500);
+    padding: var(--space-4) var(--space-6);
+    margin: var(--space-8) 0;
+    background: var(--neutral-new-50);
+    border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+    color: var(--navy-800);
+    font-style: italic;
+    font-size: var(--font-size-lg);
+  }
+
+  /* Sidebar boxes — elevated card style */
+  .cp-article__sidebar-box {
+    background: linear-gradient(135deg, var(--neutral-new-50), #ffffff);
+    border: 1px solid var(--neutral-new-200);
+    border-left: 4px solid var(--gold-500);
+    border-radius: var(--border-radius-md);
+    padding: var(--space-6) var(--space-8);
+    margin: var(--space-10) 0;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  }
+
+  .cp-article__sidebar-box h3 {
+    margin: 0 0 var(--space-3);
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    color: var(--navy-800);
+  }
+
+  .cp-article__sidebar-box p {
+    margin: 0;
+    color: var(--neutral-new-600);
+    line-height: 1.7;
+  }
+
+  /* Inline CTA */
+  .cp-article__cta {
+    margin: var(--space-8) 0;
+    text-align: center;
+  }
+
+  /* ================================================================
+   * Footer CTA Banner — branded close to every classic page
+   * ================================================================ */
+  .cp-footer-cta {
+    background: radial-gradient(ellipse at 30% 20%, rgba(30, 58, 95, 0.6) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(201, 162, 39, 0.08) 0%, transparent 40%),
+                var(--navy-800);
+    color: var(--color-text-inverse);
+    padding: var(--space-16) var(--container-padding);
+    text-align: center;
+  }
+
+  .cp-footer-cta__container {
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+  }
+
+  .cp-footer-cta__heading {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    color: #ffffff;
+    margin: 0 0 var(--space-4);
+  }
+
+  .cp-footer-cta__subtitle {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-lg);
+    color: rgba(255, 255, 255, 0.75);
+    max-width: 50ch;
+    margin: 0 auto var(--space-8);
+  }
+
+  .cp-footer-cta__actions {
+    display: flex;
+    gap: var(--space-4);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .cp-footer-cta__actions :global(.btn--secondary-light) {
+    background-color: transparent;
+    color: var(--color-text-inverse);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .cp-footer-cta__actions :global(.btn--secondary-light:hover) {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.7);
+    color: var(--color-text-inverse);
+  }
+
+  /* ================================================================
+   * Responsive
+   * ================================================================ */
+  @media (min-width: 48rem) {
+    .cp-header {
+      padding: var(--space-24) var(--container-padding) var(--space-14);
+      min-height: 400px;
+    }
+
+    .cp-header__title {
+      font-size: var(--font-size-4xl);
+    }
+
+    .cp-article {
+      padding: var(--space-14) var(--container-padding) var(--space-8);
+    }
+
+    .cp-article__body {
+      font-size: var(--font-size-lg);
+    }
+
+    .cp-footer-cta__heading {
+      font-size: var(--font-size-3xl);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .cp-header__title {
+      font-size: var(--font-size-5xl);
+    }
+
+    .cp-footer-cta__heading {
+      font-size: var(--font-size-4xl);
+    }
+  }
+</style>

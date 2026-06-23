@@ -1,0 +1,109 @@
+---
+import { urlFor } from '../../sanity/lib/image'
+
+interface Props {
+  section: any
+  headingLevel: string
+}
+
+const { section, headingLevel } = Astro.props
+---
+
+<section class="tb-section">
+  <div class="tb-section__container">
+    <div class="tb-section__rule" />
+    <blockquote class="tb-section__quote">
+      <p>&ldquo;{section.quote}&rdquo;</p>
+    </blockquote>
+    <div class="tb-section__attribution">
+      {section.image?.asset && (
+        <img
+          src={urlFor(section.image).width(80).height(80).auto('format').url()}
+          alt={section.name || ''}
+          class="tb-section__avatar"
+          loading="lazy"
+        />
+      )}
+      <div>
+        <cite class="tb-section__name">{section.name}</cite>
+        {section.role && (
+          <p class="tb-section__role">{section.role}</p>
+        )}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .tb-section {
+    padding: var(--space-20) var(--container-padding);
+    background-color: var(--neutral-new-50);
+  }
+
+  .tb-section__container {
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .tb-section__rule {
+    width: 60px;
+    height: 3px;
+    background: var(--gold-500);
+    margin: 0 auto var(--space-8);
+    border-radius: 2px;
+  }
+
+  .tb-section__quote {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    font-style: italic;
+    color: var(--navy-800);
+    line-height: var(--line-height-relaxed);
+    margin: 0 0 var(--space-8);
+    border: none;
+    padding: 0;
+    background: none;
+  }
+
+  .tb-section__quote p {
+    margin: 0;
+  }
+
+  .tb-section__attribution {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+  }
+
+  .tb-section__avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--gold-300);
+  }
+
+  .tb-section__name {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    font-style: normal;
+    color: var(--navy-900);
+    display: block;
+  }
+
+  .tb-section__role {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: var(--neutral-new-500);
+    margin: var(--space-1) 0 0;
+  }
+
+  @media (min-width: 48rem) {
+    .tb-section__quote {
+      font-size: var(--font-size-3xl);
+    }
+  }
+</style>

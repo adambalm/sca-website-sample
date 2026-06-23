@@ -1,0 +1,92 @@
+---
+import { stegaClean } from '@sanity/client/stega'
+import { parseVideoEmbed } from '../../lib/video-embed'
+
+interface Props {
+  section: any
+  headingLevel: string
+}
+
+const { section } = Astro.props
+
+const url = stegaClean(section.url) || ''
+const aspectRatio = stegaClean(section.aspectRatio) || '16/9'
+const title = stegaClean(section.title) || ''
+const caption = stegaClean(section.caption) || ''
+
+const parsed = parseVideoEmbed(url)
+const embedSrc = 'src' in parsed ? parsed.src : null
+
+const aspectClass =
+  aspectRatio === '9/16' ? '9-16' : aspectRatio === '4/3' ? '4-3' : '16-9'
+
+const iframeTitle = title || caption || 'Embedded video'
+---
+
+{embedSrc && (
+  <section class="ve-section">
+    <div class="ve-section__container">
+      <div class:list={['ve-section__frame', `ve-section__frame--${aspectClass}`]}>
+        <iframe
+          src={embedSrc}
+          title={iframeTitle}
+          loading="lazy"
+          allowfullscreen
+          referrerpolicy="strict-origin-when-cross-origin"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        />
+      </div>
+      {caption && <p class="ve-section__caption">{caption}</p>}
+    </div>
+  </section>
+)}
+
+<style>
+  .ve-section {
+    padding: var(--space-12) 0;
+  }
+
+  .ve-section__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+    padding: 0 var(--container-padding);
+  }
+
+  .ve-section__frame {
+    position: relative;
+    width: 100%;
+    background: var(--neutral-new-900, #000);
+    overflow: hidden;
+    border-radius: 4px;
+  }
+
+  .ve-section__frame--16-9 {
+    aspect-ratio: 16 / 9;
+  }
+
+  .ve-section__frame--9-16 {
+    aspect-ratio: 9 / 16;
+    max-width: 24rem;
+    margin: 0 auto;
+  }
+
+  .ve-section__frame--4-3 {
+    aspect-ratio: 4 / 3;
+  }
+
+  .ve-section__frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .ve-section__caption {
+    margin-top: var(--space-3);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: var(--neutral-new-600);
+    text-align: center;
+  }
+</style>

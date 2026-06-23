@@ -1,0 +1,149 @@
+---
+/**
+ * PageHero — shared hero banner component used across all page types.
+ *
+ * Consolidates the hero image + overlay + text pattern that was previously
+ * duplicated in HeroSection.astro, index.astro, [...slug].astro,
+ * news/index.astro, and projects/index.astro.
+ *
+ * Image handling:
+ * - Uses <img> with object-fit:cover (not background-image)
+ * - Sanity hotspot x/y drives object-position
+ * - srcset generated at 640/1024/1440/1920w for responsive loading
+ * - Overlay opacity configurable, defaults to 40%
+ *
+ * Video handling (added 2026-05-07):
+ * - When `videoSrc` is provided, renders a muted/looping/playsinline <video>
+ *   in place of the hero image. Image is suppressed when videoSrc is set.
+ * - Overlay still renders when either image or video is present.
+ * - Component defaults (minHeight, alignItems, background gradient) are
+ *   unchanged so non-homepage pages using this component remain visually
+ *   identical.
+ */
+import { urlFor, heroSrcSet, hotspotToPosition } from '../sanity/lib/image'
+import { stegaClean } from '@sanity/client/stega'
+
+interface Props {
+  /** Image object from Sanity (with .asset, .hotspot, .alt) */
+  image?: any
+  /** MP4 URL for a hero background video. Takes precedence over image when set. */
+  videoSrc?: string
+  /** Overlay opacity 0-100, default 40 */
+  overlayOpacity?: number
+  /** CSS min-height, default '420px' */
+  minHeight?: string
+  /** Flex alignment, default 'flex-end' */
+  alignItems?: string
+  /** Additional CSS class on the wrapper */
+  class?: string
+}
+
+const {
+  image,
+  videoSrc,
+  overlayOpacity = 40,
+  minHeight = '420px',
+  alignItems = 'flex-end',
+  class: className = '',
+} = Astro.props
+
+const opacity = stegaClean(overlayOpacity)
+const hasImage = !!image?.asset
+const hasVideo = !!videoSrc
+const showImage = hasImage && !hasVideo
+const objectPosition = hasImage ? hotspotToPosition(image?.hotspot) : 'center 20%'
+const imgSrc = hasImage ? urlFor(image).width(1920).auto('format').url() : ''
+const imgSrcSet = hasImage ? heroSrcSet(image) : ''
+const alt = image?.alt || ''
+---
+
+<div
+  class:list={['page-hero', { 'page-hero--has-image': hasImage || hasVideo }, className]}
+  style={`min-height: ${minHeight}; align-items: ${alignItems};`}
+>
+  {hasVideo && (
+    <video
+      class="page-hero__video"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      aria-hidden="true"
+    >
+      <source src={videoSrc} type="video/mp4" />
+    </video>
+  )}
+  {showImage && (
+    <img
+      src={imgSrc}
+      srcset={imgSrcSet}
+      sizes="100vw"
+      alt={alt}
+      class="page-hero__img"
+      style={`object-position: ${objectPosition};`}
+      loading="eager"
+      decoding="async"
+    />
+  )}
+  {(hasImage || hasVideo) && (
+    <div class="page-hero__overlay" style={`opacity: ${opacity / 100};`} />
+  )}
+  <div class="page-hero__content">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .page-hero {
+    background: radial-gradient(ellipse at 30% 20%, rgba(30, 58, 95, 0.6) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(201, 162, 39, 0.08) 0%, transparent 40%),
+                var(--navy-800);
+    color: var(--color-text-inverse);
+    padding: var(--space-24) var(--container-padding) var(--space-16);
+    display: flex;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .page-hero__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+
+  .page-hero__video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+
+  .page-hero__overlay {
+    position: absolute;
+    inset: 0;
+    background-color: var(--navy-900);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-hero__content {
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+  }
+
+  @media (min-width: 64rem) {
+    .page-hero {
+      padding: var(--space-24) var(--container-padding) var(--space-20);
+    }
+  }
+</style>

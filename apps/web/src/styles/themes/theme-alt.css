@@ -1,0 +1,54 @@
+/**
+ * Theme: Alt (Forest + Amber)
+ *
+ * Alternate demonstration theme — deep green with warm amber accents.
+ * Demonstrates theme-switching capability for stakeholder review.
+ * Same layout structure, different visual personality.
+ */
+
+[data-theme="alt"] {
+  /* Primary palette remapped: navy → forest */
+  --navy-900: #0A1A12;
+  --navy-800: #122B1E;
+  --navy-700: #1A4A30;
+  --navy-600: #2A7A4F;
+  --navy-500: #3AA66A;
+
+  /* Accent palette remapped: gold → warm amber */
+  --gold-600: #B8860B;
+  --gold-500: #DAA520;
+  --gold-400: #E8B931;
+  --gold-300: #F0CA45;
+
+  /* Neutral palette: warm tint */
+  --neutral-new-900: #1A1D1A;
+  --neutral-new-800: #2A342A;
+  --neutral-new-600: #5A6A5A;
+  --neutral-new-300: #D1D9D1;
+  --neutral-new-200: #E8F0E8;
+  --neutral-new-100: #F5FAF5;
+  --neutral-new-50: #FAFCFA;
+
+  /* Semantic Colors */
+  --color-text-primary: var(--neutral-new-900);
+  --color-text-secondary: var(--neutral-new-600);
+  --color-text-muted: var(--neutral-new-600);
+  --color-text-inverse: #ffffff;
+
+  --color-background: #FAFCFA;
+  --color-background-alt: var(--neutral-new-50);
+  --color-background-elevated: #ffffff;
+
+  --color-border: var(--neutral-new-200);
+  --color-border-light: var(--neutral-new-100);
+
+  --color-link: var(--navy-600);
+  --color-link-hover: var(--navy-700);
+  --color-link-visited: var(--navy-800);
+
+  /* Focus */
+  --focus-ring-color: var(--gold-500);
+
+  /* Typography — different heading font for visual distinction */
+  --font-family-heading: Georgia, "Times New Roman", serif;
+}

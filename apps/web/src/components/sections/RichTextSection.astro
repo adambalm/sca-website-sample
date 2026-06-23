@@ -1,0 +1,136 @@
+---
+import PortableText from '../PortableText.astro'
+import { stegaClean } from '@sanity/client/stega'
+
+interface Props {
+  section: any
+  headingLevel: string
+}
+
+const { section, headingLevel } = Astro.props
+const HeadingTag = headingLevel as any
+const maxWidth = stegaClean(section.maxWidth) || 'narrow'
+
+const widthClass = {
+  narrow: 'rt-section--narrow',
+  wide: 'rt-section--wide',
+  full: 'rt-section--full',
+}[maxWidth] || 'rt-section--narrow'
+---
+
+<section class:list={['rt-section', widthClass]}>
+  <div class="rt-section__container">
+    {section.heading && (
+      <HeadingTag class="rt-section__heading">{section.heading}</HeadingTag>
+    )}
+    {section.content && (
+      <div class="rt-section__body">
+        <PortableText value={section.content} />
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .rt-section {
+    padding: var(--space-12) var(--container-padding);
+    background-color: #ffffff;
+  }
+
+  .rt-section__container {
+    margin: 0 auto;
+  }
+
+  .rt-section--narrow .rt-section__container {
+    max-width: var(--max-width-content);
+  }
+
+  .rt-section--wide .rt-section__container {
+    max-width: var(--max-width-wide);
+  }
+
+  .rt-section--full .rt-section__container {
+    max-width: var(--max-width-full);
+  }
+
+  .rt-section__heading {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: var(--navy-900);
+    margin: 0 0 var(--space-6);
+    line-height: 1.15;
+  }
+
+  .rt-section__body {
+    font-size: var(--font-size-base);
+    line-height: 1.7;
+    color: var(--neutral-new-800);
+  }
+
+  .rt-section__body :global(h2) {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    color: var(--navy-800);
+    margin: var(--space-8) 0 var(--space-3);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--neutral-new-200);
+  }
+
+  .rt-section__body :global(h3) {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    color: var(--navy-700);
+    margin: var(--space-6) 0 var(--space-2);
+  }
+
+  .rt-section__body :global(p) {
+    margin: 0 0 var(--space-4);
+  }
+
+  .rt-section__body :global(ul),
+  .rt-section__body :global(ol) {
+    margin: 0 0 var(--space-4);
+    padding-left: var(--space-6);
+  }
+
+  .rt-section__body :global(li) {
+    margin-bottom: var(--space-2);
+  }
+
+  .rt-section__body :global(a) {
+    color: var(--navy-600);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .rt-section__body :global(a:hover) {
+    color: var(--navy-800);
+  }
+
+  .rt-section__body :global(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--border-radius-md);
+    margin: var(--space-4) 0;
+  }
+
+  .rt-section__body :global(blockquote) {
+    border-left: 4px solid var(--gold-500);
+    padding: var(--space-4) var(--space-6);
+    margin: var(--space-6) 0;
+    background: var(--neutral-new-50);
+    border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+    color: var(--navy-800);
+    font-style: italic;
+  }
+
+  @media (min-width: 48rem) {
+    .rt-section {
+      padding: var(--space-16) var(--container-padding);
+    }
+
+    .rt-section__body {
+      font-size: var(--font-size-lg);
+    }
+  }
+</style>

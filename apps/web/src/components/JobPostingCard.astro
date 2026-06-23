@@ -1,0 +1,143 @@
+---
+/**
+ * JobPostingCard - Listing card for a single jobPosting.
+ *
+ * Visually mirrors NewsCard so /careers feels native alongside /news:
+ *   rounded card, soft shadow, hover lift, navy-gradient placeholder header
+ *   (job postings don't carry photos), title, then a single metadata line.
+ *
+ * Compositional sibling to NewsCard; not a replacement. They share design
+ * tokens, not class names — so either can evolve without touching the other.
+ */
+interface Props {
+  posting: {
+    positionTitle: string;
+    slug: { current: string };
+    postingStartDate: string;
+    postingEndDate: string;
+    worksiteAddress: string;
+    salary: string;
+  };
+}
+
+const { posting } = Astro.props;
+
+function formatDate(d?: string): string {
+  if (!d) return '';
+  const dt = new Date(`${d}T00:00:00`);
+  if (Number.isNaN(dt.getTime())) return d;
+  return dt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+---
+
+<article class="job-card">
+  <div class="job-card__header">
+    <svg
+      class="job-card__icon"
+      xmlns="http://www.w3.org/2000/svg"
+      width="40"
+      height="40"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="7" width="18" height="13" rx="2" />
+      <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+      <path d="M3 13h18" />
+    </svg>
+  </div>
+  <div class="job-card__content">
+    <div class="job-card__meta">
+      <time datetime={posting.postingStartDate} class="job-card__date">
+        Posted {formatDate(posting.postingStartDate)}
+      </time>
+    </div>
+    <h3 class="job-card__title">
+      <a href={`/careers/${posting.slug.current}`} class="job-card__link">
+        {posting.positionTitle}
+      </a>
+    </h3>
+    <p class="job-card__summary">
+      {posting.worksiteAddress} &middot; {posting.salary}
+    </p>
+  </div>
+</article>
+
+<style>
+  .job-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-background);
+    border: 1px solid var(--neutral-new-200);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: transform 300ms ease-out, box-shadow 300ms ease-out;
+  }
+
+  .job-card:hover,
+  .job-card:focus-within {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  .job-card__header {
+    aspect-ratio: var(--aspect-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--navy-800) 0%, var(--navy-700) 100%);
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .job-card__content {
+    padding: var(--space-5);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .job-card__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+  }
+
+  .job-card__date {
+    color: var(--color-text-muted);
+  }
+
+  .job-card__title {
+    font-size: var(--font-size-lg);
+    line-height: var(--line-height-snug);
+    margin: 0 0 var(--space-2);
+  }
+
+  .job-card__link {
+    color: var(--color-text-primary);
+    text-decoration: none;
+  }
+
+  .job-card__link:hover {
+    color: var(--color-link);
+  }
+
+  .job-card__link:visited {
+    color: var(--color-text-primary);
+  }
+
+  .job-card__summary {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+    margin-top: auto;
+    margin-bottom: 0;
+  }
+</style>

@@ -1,0 +1,22 @@
+{
+  "name": "sca-website",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:studio": "npm run dev --workspace=apps/sca-studio",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build:web": "npm run build --workspace=apps/web",
+    "audit:sanity": "node scripts/sanity-version-audit.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
+    "@playwright/test": "^1.58.2",
+    "playwright": "^1.58.1"
+  },
+  "dependencies": {
+    "styled-components": "^6.3.11"
+  }
+}

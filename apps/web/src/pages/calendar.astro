@@ -1,0 +1,890 @@
+---
+/**
+ * Calendar Page — School Event Calendar
+ *
+ * Displays events from Sanity CMS in two views:
+ * - List view (default): chronological event cards
+ * - Month grid view: navigable month with event dots
+ *
+ * Features:
+ * - Category filter tabs
+ * - Inline event detail expansion
+ * - "Add to Calendar" .ics generation
+ * - Timezone-safe rendering (America/New_York)
+ *
+ * SSR: prerender = false (fresh data on each request)
+ */
+export const prerender = false
+
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { loadQuery } from '../sanity/lib/load-query'
+
+const TZ = 'America/New_York'
+
+// Fetch all future events + recent past (last 7 days for context)
+const pastCutoff = new Date()
+pastCutoff.setDate(pastCutoff.getDate() - 7)
+
+const { data: events } = await loadQuery<any[]>({
+  query: `*[_type == "event" && startDate >= $cutoff] | order(startDate asc) {
+    _id,
+    title,
+    "slug": slug.current,
+    startDate,
+    endDate,
+    allDay,
+    location,
+    category,
+    descriptionText,
+    description,
+    externalUrl,
+    "programTitle": program->title,
+    "imageUrl": image.asset->url
+  }`,
+  params: { cutoff: pastCutoff.toISOString() }
+})
+
+// Group events by month for the list view
+// Multi-day events that span months are added to each month they cover.
+// Events added to months beyond their start month are tagged _continuesFrom.
+const eventsByMonth: Record<string, any[]> = {}
+for (const event of events) {
+  const start = new Date(event.startDate)
+  const end = event.endDate ? new Date(event.endDate) : start
+
+  // Build list of unique year-month keys this event touches
+  const monthKeys: string[] = []
+  const cur = new Date(start)
+  while (cur <= end) {
+    const key = cur.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: TZ })
+    if (monthKeys.length === 0 || monthKeys[monthKeys.length - 1] !== key) {
+      monthKeys.push(key)
+    }
+    // Jump to first of next month to avoid iterating every day
+    cur.setMonth(cur.getMonth() + 1)
+    cur.setDate(1)
+  }
+
+  for (let i = 0; i < monthKeys.length; i++) {
+    const key = monthKeys[i]
+    if (!eventsByMonth[key]) eventsByMonth[key] = []
+    if (i === 0) {
+      eventsByMonth[key].push(event)
+    } else {
+      // Clone with continuation marker for months beyond start
+      const startMonthLabel = start.toLocaleDateString('en-US', { month: 'long', timeZone: TZ })
+      eventsByMonth[key].push({ ...event, _continuesFrom: startMonthLabel })
+    }
+  }
+}
+
+// Build set of dates that have events (for month grid dots)
+// Use YYYY-MM-DD format for deterministic server/client matching
+const eventDates = new Set<string>()
+for (const event of events) {
+  const start = new Date(event.startDate)
+  const end = event.endDate ? new Date(event.endDate) : start
+  const cur = new Date(start)
+  while (cur <= end) {
+    // Format in Eastern time as YYYY-MM-DD
+    const y = cur.toLocaleString('en-US', { year: 'numeric', timeZone: TZ })
+    const m = cur.toLocaleString('en-US', { month: '2-digit', timeZone: TZ })
+    const d = cur.toLocaleString('en-US', { day: '2-digit', timeZone: TZ })
+    eventDates.add(`${y}-${m}-${d}`)
+    cur.setDate(cur.getDate() + 1)
+  }
+}
+
+// Categories for filter tabs
+const categories = [
+  { label: 'All', value: '' },
+  { label: 'Academic', value: 'academic' },
+  { label: 'Athletics', value: 'athletics' },
+  { label: 'Admissions', value: 'admissions' },
+  { label: 'Community', value: 'community' },
+  { label: 'Holiday', value: 'holiday' },
+]
+
+// Helper: format time
+function formatTime(dateStr: string, allDay: boolean): string {
+  if (allDay) return 'All Day'
+  const d = new Date(dateStr)
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ }) + ' ET'
+}
+
+function formatDate(dateStr: string): { month: string; day: string; weekday: string } {
+  const d = new Date(dateStr)
+  return {
+    month: d.toLocaleDateString('en-US', { month: 'short', timeZone: TZ }).toUpperCase(),
+    day: d.toLocaleDateString('en-US', { day: 'numeric', timeZone: TZ }),
+    weekday: d.toLocaleDateString('en-US', { weekday: 'long', timeZone: TZ }),
+  }
+}
+---
+
+<BaseLayout title="School Calendar" description="Upcoming events, academic dates, and community activities at Springfield Commonwealth Academy." containerClass="main-content__container main-content__container--wide">
+
+  <div class="cal-page">
+    <header class="cal-page__header">
+      <h1 class="cal-page__title">School Calendar</h1>
+      <p class="cal-page__subtitle">Academic dates, events, and community activities</p>
+    </header>
+
+    <!-- View toggle + Category filters -->
+    <div class="cal-page__controls">
+      <div class="cal-page__filters" role="tablist" aria-label="Filter by category">
+        {categories.map(cat => (
+          <button
+            class={`cal-filter-tab ${cat.value === '' ? 'cal-filter-tab--active' : ''}`}
+            data-category={cat.value}
+            role="tab"
+            aria-selected={cat.value === '' ? 'true' : 'false'}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+    </div>
+
+    <!-- Month Grid Navigator (always visible, compact) -->
+    <div class="cal-grid" id="cal-grid-view">
+      <div class="cal-grid__nav">
+        <button class="btn btn--ghost btn--sm" id="cal-prev-month" aria-label="Previous month">← Prev</button>
+        <h2 class="cal-grid__month-title" id="cal-grid-title"></h2>
+        <button class="btn btn--ghost btn--sm" id="cal-next-month" aria-label="Next month">Next →</button>
+      </div>
+      <div class="cal-grid__weekdays">
+        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+      </div>
+      <div class="cal-grid__days" id="cal-grid-days" data-event-dates={JSON.stringify([...eventDates])}>
+      </div>
+    </div>
+
+    <!-- Event List (always visible below grid) -->
+    <div class="cal-list" id="cal-list-view">
+      {events.length === 0 ? (
+        <div class="cal-page__empty">
+          <p>No upcoming events. Check back soon!</p>
+        </div>
+      ) : (
+        Object.entries(eventsByMonth).map(([monthLabel, monthEvents]) => (
+          <section class="cal-list__month-group">
+            <h2 class="cal-list__month-label">{monthLabel}</h2>
+            <div class="cal-list__events">
+              {monthEvents.map((event: any) => {
+                const isContinuation = !!event._continuesFrom
+                const { month, day, weekday } = formatDate(event.startDate)
+                const time = formatTime(event.startDate, event.allDay)
+
+                // Multi-day: compute end date display
+                const hasEndDate = event.endDate && event.endDate !== event.startDate
+                const endFmt = hasEndDate ? formatDate(event.endDate) : null
+
+                // Build date range text for meta line
+                let dateRangeText = `${weekday}, ${time}`
+                if (hasEndDate && endFmt) {
+                  const startLabel = `${month} ${day}`
+                  const endLabel = `${endFmt.month} ${endFmt.day}`
+                  dateRangeText = `${startLabel} – ${endLabel}`
+                  if (event.allDay) dateRangeText += ', All Day'
+                  else dateRangeText += `, ${time}`
+                }
+                if (isContinuation) {
+                  dateRangeText = `Continues from ${event._continuesFrom} · ${dateRangeText}`
+                }
+
+                // For continuation events, show start date badge (the event start, not current month)
+                return (
+                  <article
+                    class="cal-event-card"
+                    data-category={event.category || ''}
+                    data-event-id={event._id}
+                    data-start-date={event.startDate}
+                    data-end-date={event.endDate || ''}
+                  >
+                    <button class="cal-event-card__toggle" aria-expanded="false">
+                      <div class={`cal-event-card__date-badge${isContinuation ? ' cal-event-card__date-badge--continuing' : ''}`}>
+                        <span class="cal-event-card__month">{month}</span>
+                        <span class="cal-event-card__day">{day}</span>
+                        {hasEndDate && endFmt && (
+                          <span class="cal-event-card__date-range-end">– {endFmt.month} {endFmt.day}</span>
+                        )}
+                      </div>
+                      <div class="cal-event-card__summary">
+                        <h3 class="cal-event-card__title">{event.title}</h3>
+                        <div class="cal-event-card__meta">
+                          <span class="cal-event-card__time">{dateRangeText}</span>
+                          {event.location && (
+                            <span class="cal-event-card__location">{event.location}</span>
+                          )}
+                        </div>
+                        {event.category && (
+                          <span class={`cal-event-card__category cal-event-card__category--${event.category}`}>
+                            {event.category}
+                          </span>
+                        )}
+                      </div>
+                      <span class="cal-event-card__chevron" aria-hidden="true">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                          <path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                      </span>
+                    </button>
+
+                    <div class="cal-event-card__details" hidden>
+                      {event.descriptionText && (
+                        <p class="cal-event-card__description">{event.descriptionText}</p>
+                      )}
+                      <div class="cal-event-card__actions">
+                        <button
+                          class="btn btn--sm btn--secondary cal-ics-btn"
+                          data-title={event.title}
+                          data-start={event.startDate}
+                          data-end={event.endDate || ''}
+                          data-allday={event.allDay ? 'true' : 'false'}
+                          data-location={event.location || ''}
+                          data-description={event.descriptionText || ''}
+                          data-uid={event._id}
+                        >
+                          📅 Add to Calendar
+                        </button>
+                        {event.externalUrl && (
+                          <a href={event.externalUrl} class="btn btn--sm btn--primary" target="_blank" rel="noopener">
+                            More Info →
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          </section>
+        ))
+      )}
+    </div>
+
+    <!-- Grid data is now rendered above the list -->
+
+  </div>
+
+  <!-- Server-rendered event dates for grid view -->
+
+</BaseLayout>
+
+<style>
+  /* =========================================================================
+     Calendar Page Styles
+     ========================================================================= */
+
+  .cal-page {
+    max-width: var(--max-width-wide);
+    margin: 0 auto;
+    padding-bottom: var(--space-16);
+  }
+
+  .cal-page__header {
+    text-align: center;
+    margin-bottom: var(--space-8);
+  }
+
+  .cal-page__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: var(--navy-800);
+    margin-bottom: var(--space-2);
+  }
+
+  .cal-page__subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--neutral-new-600);
+    margin: 0;
+  }
+
+  .cal-page__empty {
+    text-align: center;
+    color: var(--neutral-new-500);
+    padding: var(--space-16) 0;
+    font-size: var(--font-size-lg);
+  }
+
+  /* Controls bar: filters + view toggle */
+  .cal-page__controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  /* Category filter tabs */
+  .cal-page__filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+
+  .cal-filter-tab {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    padding: var(--space-2) var(--space-4);
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--neutral-new-600);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .cal-filter-tab:hover {
+    border-color: var(--navy-600);
+    color: var(--navy-700);
+  }
+
+  .cal-filter-tab--active {
+    background: var(--navy-800);
+    color: #ffffff;
+    border-color: var(--navy-800);
+  }
+
+
+  /* =========================================================================
+     List View
+     ========================================================================= */
+
+  .cal-list__month-group {
+    margin-bottom: var(--space-8);
+  }
+
+  .cal-list__month-label {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    color: var(--navy-700);
+    margin: 0 0 var(--space-4);
+    padding-bottom: var(--space-2);
+    border-bottom: 2px solid var(--gold-500);
+  }
+
+  .cal-list__events {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  /* Event Card */
+  .cal-event-card {
+    background: #ffffff;
+    border: 1px solid var(--neutral-new-200);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: box-shadow var(--transition-normal);
+  }
+
+  .cal-event-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  .cal-event-card__toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    width: 100%;
+    padding: var(--space-4) var(--space-5);
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .cal-event-card__date-badge {
+    flex-shrink: 0;
+    width: 52px;
+    text-align: center;
+    background: var(--navy-800);
+    border-radius: 8px;
+    padding: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cal-event-card__month {
+    font-family: var(--font-family-sans);
+    font-size: 10px;
+    font-weight: var(--font-weight-bold);
+    color: var(--gold-400);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .cal-event-card__day {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: #ffffff;
+    line-height: 1;
+  }
+
+  .cal-event-card__date-badge:has(.cal-event-card__date-range-end) {
+    width: 60px;
+  }
+
+  .cal-event-card__date-range-end {
+    font-family: var(--font-family-sans);
+    font-size: 9px;
+    font-weight: var(--font-weight-medium);
+    color: var(--gold-300);
+    line-height: 1.1;
+    margin-top: 1px;
+    white-space: nowrap;
+  }
+
+  .cal-event-card__date-badge--continuing {
+    background: var(--navy-600);
+  }
+
+  .cal-event-card__summary {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cal-event-card__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-base);
+    color: var(--navy-800);
+    margin: 0 0 var(--space-1);
+    line-height: var(--line-height-snug);
+  }
+
+  .cal-event-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .cal-event-card__time,
+  .cal-event-card__location {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: var(--neutral-new-600);
+  }
+
+  .cal-event-card__location::before {
+    content: '📍 ';
+  }
+
+  .cal-event-card__category {
+    display: inline-block;
+    margin-top: var(--space-1);
+    font-family: var(--font-family-sans);
+    font-size: 11px;
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: var(--border-radius-sm);
+    background: var(--neutral-new-100);
+    color: var(--neutral-new-600);
+  }
+
+  /* Category badge colors — match UpcomingEvents.astro */
+  .cal-event-card__category--athletics { background: #dbeafe; color: #1e40af; }
+  .cal-event-card__category--academic { background: #dcfce7; color: #166534; }
+  .cal-event-card__category--admissions { background: #fef3c7; color: #92400e; }
+  .cal-event-card__category--community { background: #f3e8ff; color: #6b21a8; }
+  .cal-event-card__category--holiday { background: #fce7f3; color: #9d174d; }
+
+  .cal-event-card__chevron {
+    flex-shrink: 0;
+    color: var(--neutral-new-600);
+    transition: transform var(--transition-fast);
+  }
+
+  .cal-event-card[data-expanded="true"] .cal-event-card__chevron {
+    transform: rotate(180deg);
+  }
+
+  /* Expanded detail pane */
+  .cal-event-card__details {
+    padding: 0 var(--space-5) var(--space-5);
+    padding-left: calc(52px + var(--space-4) + var(--space-5)); /* align with content, past badge */
+    border-top: 1px solid var(--neutral-new-100);
+  }
+
+  .cal-event-card__description {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+    margin: var(--space-3) 0;
+  }
+
+  .cal-event-card__actions {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-top: var(--space-3);
+  }
+
+  /* =========================================================================
+     Month Grid Navigator (compact, always visible above list)
+     ========================================================================= */
+
+  .cal-grid {
+    max-width: 360px;
+    margin: 0 auto var(--space-8);
+  }
+
+  .cal-grid__nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+  }
+
+  .cal-grid__month-title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    color: var(--navy-800);
+    margin: 0;
+  }
+
+  .cal-grid__weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--neutral-new-600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-2);
+  }
+
+  .cal-grid__days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+
+  /* These styles use :global() because grid day cells are generated
+     by client-side JS (innerHTML) and don't have Astro scoping attributes */
+  .cal-grid__days :global(.cal-grid__day) {
+    padding: 6px 0 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    border-radius: var(--border-radius-md);
+    cursor: default;
+    position: relative;
+    transition: background var(--transition-fast);
+  }
+
+  .cal-grid__days :global(.cal-grid__day--empty) {
+    color: transparent;
+  }
+
+  .cal-grid__days :global(.cal-grid__day--today) {
+    font-weight: var(--font-weight-bold);
+    color: var(--navy-900);
+    z-index: 1;
+  }
+
+  .cal-grid__days :global(.cal-grid__day--today)::before {
+    content: '';
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--gold-500);
+    z-index: -1;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -60%);
+  }
+
+  .cal-grid__days :global(.cal-grid__day--has-event) {
+    cursor: pointer;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .cal-grid__days :global(.cal-grid__day--has-event:hover) {
+    background: var(--neutral-new-100);
+  }
+
+  .cal-grid__days :global(.cal-grid__day-dot) {
+    width: 14px;
+    height: 3px;
+    background: var(--navy-600);
+    border-radius: 2px;
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* =========================================================================
+     Hidden filter state
+     ========================================================================= */
+
+  .cal-event-card[data-filtered="true"] {
+    display: none;
+  }
+
+  /* =========================================================================
+     Responsive
+     ========================================================================= */
+
+  @media (min-width: 48rem) {
+    .cal-page__title {
+      font-size: var(--font-size-4xl);
+    }
+
+    .cal-event-card__toggle {
+      padding: var(--space-5) var(--space-6);
+    }
+
+    .cal-event-card__details {
+      padding-left: calc(52px + var(--space-4) + var(--space-6));
+    }
+
+    .cal-event-card__meta {
+      flex-direction: row;
+      gap: var(--space-4);
+    }
+  }
+
+</style>
+
+<script>
+// =========================================================================
+// Calendar Page Client-Side Interactivity
+// Uses DOMContentLoaded (astro:page-load requires View Transitions)
+// =========================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  const TZ = 'America/New_York'
+
+  // --- Category Filters ---
+  const filterTabs = document.querySelectorAll<HTMLButtonElement>('.cal-filter-tab')
+  const eventCards = document.querySelectorAll<HTMLElement>('.cal-event-card')
+
+  filterTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const category = tab.dataset.category || ''
+
+      filterTabs.forEach(t => {
+        t.classList.toggle('cal-filter-tab--active', t === tab)
+        t.setAttribute('aria-selected', t === tab ? 'true' : 'false')
+      })
+
+      eventCards.forEach(card => {
+        const cardCat = card.dataset.category || ''
+        const hidden = category !== '' && cardCat !== category
+        card.setAttribute('data-filtered', hidden ? 'true' : 'false')
+      })
+
+      document.querySelectorAll<HTMLElement>('.cal-list__month-group').forEach(group => {
+        const visible = group.querySelectorAll('.cal-event-card:not([data-filtered="true"])').length
+        group.style.display = visible ? '' : 'none'
+      })
+    })
+  })
+
+  // --- Event Card Expand/Collapse ---
+  document.querySelectorAll<HTMLButtonElement>('.cal-event-card__toggle').forEach(toggle => {
+    toggle.addEventListener('click', () => {
+      const card = toggle.closest('.cal-event-card')!
+      const details = card.querySelector<HTMLElement>('.cal-event-card__details')!
+      const isExpanded = toggle.getAttribute('aria-expanded') === 'true'
+
+      toggle.setAttribute('aria-expanded', isExpanded ? 'false' : 'true')
+      card.setAttribute('data-expanded', isExpanded ? 'false' : 'true')
+      details.hidden = isExpanded
+    })
+  })
+
+  // --- Month Grid (always visible as navigator) ---
+  const now = new Date()
+  const nowET = new Date(now.toLocaleString('en-US', { timeZone: TZ }))
+  let currentMonth = nowET.getMonth()
+  let currentYear = nowET.getFullYear()
+
+  // Event dates pre-computed server-side and embedded as data attribute
+  const gridDaysEl = document.getElementById('cal-grid-days')!
+  const rawDates = gridDaysEl.getAttribute('data-event-dates')
+  const eventDateSet = new Set<string>(rawDates ? JSON.parse(rawDates) as string[] : [])
+
+  function renderMonth(year: number, month: number) {
+    const titleEl = document.getElementById('cal-grid-title')!
+    const daysEl = document.getElementById('cal-grid-days')!
+
+    const monthName = new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    titleEl.textContent = monthName
+
+    const firstDay = new Date(year, month, 1).getDay()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+    const todayStr = (() => {
+      const n = new Date()
+      const y = n.toLocaleString('en-US', { year: 'numeric', timeZone: TZ })
+      const m = n.toLocaleString('en-US', { month: '2-digit', timeZone: TZ })
+      const d = n.toLocaleString('en-US', { day: '2-digit', timeZone: TZ })
+      return `${y}-${m}-${d}`
+    })()
+
+    let html = ''
+    for (let i = 0; i < firstDay; i++) {
+      html += '<div class="cal-grid__day cal-grid__day--empty"></div>'
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const mm = String(month + 1).padStart(2, '0')
+      const dd = String(d).padStart(2, '0')
+      const dateStr = `${year}-${mm}-${dd}`
+      const isToday = dateStr === todayStr
+      const hasEvent = eventDateSet.has(dateStr)
+
+      const classes = ['cal-grid__day']
+      if (isToday) classes.push('cal-grid__day--today')
+      if (hasEvent) classes.push('cal-grid__day--has-event')
+
+      html += `<div class="${classes.join(' ')}" data-date="${dateStr}">`
+      html += `${d}`
+      if (hasEvent) html += '<span class="cal-grid__day-dot"></span>'
+      html += '</div>'
+    }
+
+    daysEl.innerHTML = html
+
+    // Click handler for days with events — scrolls list to matching event
+    daysEl.querySelectorAll<HTMLElement>('.cal-grid__day--has-event').forEach(dayEl => {
+      dayEl.addEventListener('click', () => {
+        const clickedDate = dayEl.dataset.date
+        if (!clickedDate) return
+
+        // Find the first card whose date range includes the clicked date
+        let scrolled = false
+        eventCards.forEach(card => {
+          if (scrolled) return
+          const startStr = card.dataset.startDate
+          const endStr = card.dataset.endDate
+          if (!startStr) return
+
+          // Format start/end to YYYY-MM-DD in Eastern time for comparison
+          const fmtDate = (ds: string) => {
+            const dt = new Date(ds)
+            const y = dt.toLocaleString('en-US', { year: 'numeric', timeZone: TZ })
+            const m = dt.toLocaleString('en-US', { month: '2-digit', timeZone: TZ })
+            const d = dt.toLocaleString('en-US', { day: '2-digit', timeZone: TZ })
+            return `${y}-${m}-${d}`
+          }
+
+          const cardStart = fmtDate(startStr)
+          const cardEnd = endStr ? fmtDate(endStr) : cardStart
+
+          // Match if clicked date falls within [startDate, endDate]
+          if (clickedDate >= cardStart && clickedDate <= cardEnd) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            scrolled = true
+          }
+        })
+      })
+    })
+  }
+
+  document.getElementById('cal-prev-month')!.addEventListener('click', () => {
+    currentMonth--
+    if (currentMonth < 0) { currentMonth = 11; currentYear-- }
+    renderMonth(currentYear, currentMonth)
+  })
+
+  document.getElementById('cal-next-month')!.addEventListener('click', () => {
+    currentMonth++
+    if (currentMonth > 11) { currentMonth = 0; currentYear++ }
+    renderMonth(currentYear, currentMonth)
+  })
+
+  // Render current month on page load (grid is always visible)
+  renderMonth(currentYear, currentMonth)
+
+  // --- .ics Generation ---
+  document.querySelectorAll<HTMLButtonElement>('.cal-ics-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const { title, start, end, allday, location, description, uid } = btn.dataset
+
+      const formatICSDate = (dateStr: string, isAllDay: boolean): string => {
+        const d = new Date(dateStr)
+        if (isAllDay) {
+          const y = d.getFullYear()
+          const m = String(d.getMonth() + 1).padStart(2, '0')
+          const dd = String(d.getDate()).padStart(2, '0')
+          return `${y}${m}${dd}`
+        }
+        const eastern = new Date(d.toLocaleString('en-US', { timeZone: TZ }))
+        const y = eastern.getFullYear()
+        const mo = String(eastern.getMonth() + 1).padStart(2, '0')
+        const dy = String(eastern.getDate()).padStart(2, '0')
+        const h = String(eastern.getHours()).padStart(2, '0')
+        const mi = String(eastern.getMinutes()).padStart(2, '0')
+        const s = String(eastern.getSeconds()).padStart(2, '0')
+        return `${y}${mo}${dy}T${h}${mi}${s}`
+      }
+
+      const isAllDay = allday === 'true'
+      const dtStart = formatICSDate(start!, isAllDay)
+
+      let dtEnd = dtStart
+      if (end) {
+        dtEnd = formatICSDate(end, isAllDay)
+      } else if (isAllDay) {
+        const d = new Date(start!)
+        d.setDate(d.getDate() + 1)
+        dtEnd = formatICSDate(d.toISOString(), true)
+      }
+
+      const dtPrefix = isAllDay ? 'VALUE=DATE' : 'TZID=America/New_York'
+
+      const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Springfield Commonwealth Academy//Calendar//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        `UID:${uid}@springfieldcommonwealthacademy.org`,
+        `DTSTART;${dtPrefix}:${dtStart}`,
+        `DTEND;${dtPrefix}:${dtEnd}`,
+        `SUMMARY:${(title || '').replace(/[,;\\]/g, ' ')}`,
+        location ? `LOCATION:${location.replace(/[,;\\]/g, ' ')}` : '',
+        description ? `DESCRIPTION:${description.replace(/\n/g, '\\n').replace(/[,;\\]/g, ' ')}` : '',
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].filter(Boolean).join('\r\n')
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${(title || 'event').replace(/\s+/g, '-').toLowerCase()}.ics`
+      a.click()
+      URL.revokeObjectURL(url)
+    })
+  })
+})
+</script>
+
+

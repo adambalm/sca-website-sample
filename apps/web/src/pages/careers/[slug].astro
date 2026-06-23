@@ -1,0 +1,423 @@
+---
+/**
+ * Job Posting Detail Page
+ *
+ * Renders a single jobPosting by slug. Open postings are indexable; once a
+ * posting closes (postingEndDate past) or is archived, the URL remains live
+ * for audit retention but the page is served with noindex.
+ *
+ * For postings with postingType === 'notice', a hardcoded legal-notice block
+ * is rendered. The block's text is in this template (not the CMS) so its
+ * wording is consistent and not editor-modifiable.
+ */
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { loadQuery } from '../../sanity/lib/load-query';
+
+interface JobPosting {
+  _id: string;
+  positionTitle: string;
+  slug: { current: string };
+  postingType: 'standard' | 'notice';
+  postingStartDate: string;
+  postingEndDate: string;
+  worksiteAddress: string;
+  salary: string;
+  applicationEmail: string;
+  duties: string[];
+  requirements: string[];
+  archived: boolean;
+  noticeDocument?: {
+    url: string;
+    originalFilename: string;
+    size: number;
+  } | null;
+}
+
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/404');
+}
+
+const { data: posting } = await loadQuery<JobPosting | null>({
+  query: `*[_type == "jobPosting" && slug.current == $slug][0] {
+    _id,
+    positionTitle,
+    slug,
+    postingType,
+    postingStartDate,
+    postingEndDate,
+    worksiteAddress,
+    salary,
+    applicationEmail,
+    duties,
+    requirements,
+    archived,
+    "noticeDocument": noticeDocument{
+      "url": asset->url,
+      "originalFilename": asset->originalFilename,
+      "size": asset->size
+    }
+  }`,
+  params: { slug },
+});
+
+if (!posting) {
+  return Astro.redirect('/404');
+}
+
+function formatDate(d?: string): string {
+  if (!d) return '';
+  const dt = new Date(`${d}T00:00:00`);
+  if (Number.isNaN(dt.getTime())) return d;
+  return dt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function formatBytes(n?: number): string {
+  if (!n || n <= 0) return '';
+  if (n > 1048576) return `${(n / 1048576).toFixed(1)} MB`;
+  return `${Math.round(n / 1024)} KB`;
+}
+
+const today = new Date().toISOString().slice(0, 10);
+const isUpcoming = posting.postingStartDate > today;
+const isClosed = posting.postingEndDate < today;
+const isArchived = !!posting.archived;
+const isOpen = !isUpcoming && !isClosed && !isArchived;
+
+const status: 'Open' | 'Upcoming' | 'Closed' | 'Archived' = isArchived
+  ? 'Archived'
+  : isClosed
+    ? 'Closed'
+    : isUpcoming
+      ? 'Upcoming'
+      : 'Open';
+
+const shouldNoindex = !isOpen;
+
+const description = `Open position at Springfield Commonwealth Academy in ${posting.worksiteAddress}: ${posting.positionTitle}.`;
+
+const hasPdf = !!posting.noticeDocument?.url;
+---
+
+<BaseLayout
+  title={posting.positionTitle}
+  description={description}
+  noindex={shouldNoindex}
+>
+  <header class="jp-header">
+    <div class="jp-header__container">
+      <nav class="jp-header__breadcrumb" aria-label="Breadcrumb">
+        <a href="/careers" class="jp-header__back">&larr; Back to Careers</a>
+      </nav>
+      <h1 class="jp-header__title">{posting.positionTitle}</h1>
+      <p class={`jp-header__status jp-header__status--${status.toLowerCase()}`}>
+        <span class="jp-header__status-dot" aria-hidden="true"></span>
+        <span>{status}</span>
+      </p>
+    </div>
+  </header>
+
+  <article class="jp-body">
+    <section class="jp-section" aria-labelledby="jp-details">
+      <h2 id="jp-details" class="jp-section__heading">Posting details</h2>
+      <dl class="jp-details">
+        <div class="jp-details__row">
+          <dt>Posted</dt>
+          <dd><time datetime={posting.postingStartDate}>{formatDate(posting.postingStartDate)}</time></dd>
+        </div>
+        <div class="jp-details__row">
+          <dt>Posting ends on or after</dt>
+          <dd><time datetime={posting.postingEndDate}>{formatDate(posting.postingEndDate)}</time></dd>
+        </div>
+        <div class="jp-details__row">
+          <dt>Position</dt>
+          <dd>{posting.positionTitle}</dd>
+        </div>
+        <div class="jp-details__row">
+          <dt>Worksite</dt>
+          <dd>{posting.worksiteAddress}</dd>
+        </div>
+        <div class="jp-details__row">
+          <dt>Salary</dt>
+          <dd>{posting.salary}</dd>
+        </div>
+        <div class="jp-details__row">
+          <dt>How to apply</dt>
+          <dd>
+            <a href={`mailto:${posting.applicationEmail}`} class="jp-details__email">
+              {posting.applicationEmail}
+            </a>
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="jp-section" aria-labelledby="jp-duties">
+      <h2 id="jp-duties" class="jp-section__heading">Position duties</h2>
+      <ul class="jp-list">
+        {posting.duties.map((d: string) => <li>{d}</li>)}
+      </ul>
+    </section>
+
+    <section class="jp-section" aria-labelledby="jp-requirements">
+      <h2 id="jp-requirements" class="jp-section__heading">Requirements</h2>
+      <ul class="jp-list">
+        {posting.requirements.map((r: string) => <li>{r}</li>)}
+      </ul>
+    </section>
+
+    {hasPdf && posting.noticeDocument && (
+      <section class="jp-section" aria-labelledby="jp-document">
+        <h2 id="jp-document" class="jp-section__heading">Posting document</h2>
+        <a
+          href={posting.noticeDocument.url}
+          download={posting.noticeDocument.originalFilename}
+          class="jp-download"
+        >
+          <svg
+            class="jp-download__icon"
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path d="M10 3v10m0 0l-3-3m3 3l3-3M4 15h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="jp-download__label">
+            Download posting (PDF{posting.noticeDocument.size ? `, ${formatBytes(posting.noticeDocument.size)}` : ''})
+          </span>
+        </a>
+      </section>
+    )}
+
+  </article>
+</BaseLayout>
+
+<style>
+  @import '../../styles/global.css';
+
+  /* Branded navy header (no full-bleed photo — focused, document-like) */
+  .jp-header {
+    background: radial-gradient(ellipse at 30% 20%, rgba(30, 58, 95, 0.6) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(201, 162, 39, 0.08) 0%, transparent 40%),
+                var(--navy-800);
+    padding: var(--space-12) var(--container-padding) var(--space-10);
+    color: var(--color-text-inverse);
+  }
+
+  .jp-header__container {
+    max-width: 880px;
+    margin: 0 auto;
+  }
+
+  .jp-header__breadcrumb {
+    margin-bottom: var(--space-4);
+  }
+
+  .jp-header__back {
+    display: inline-block;
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+  }
+
+  .jp-header__back:hover,
+  .jp-header__back:focus-visible {
+    color: var(--color-text-inverse);
+    text-decoration: underline;
+  }
+
+  .jp-header__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    line-height: 1.15;
+    color: var(--color-text-inverse);
+    margin: 0 0 var(--space-3);
+    text-wrap: balance;
+  }
+
+  .jp-header__status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-1) var(--space-3);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    color: var(--color-text-inverse);
+  }
+
+  .jp-header__status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--neutral-new-300);
+  }
+
+  .jp-header__status--open .jp-header__status-dot {
+    background: #6ee7b7;
+  }
+
+  .jp-header__status--upcoming .jp-header__status-dot {
+    background: var(--gold-400);
+  }
+
+  .jp-header__status--closed .jp-header__status-dot {
+    background: var(--neutral-new-400);
+  }
+
+  .jp-header__status--archived .jp-header__status-dot {
+    background: var(--neutral-new-500);
+  }
+
+  @media (min-width: 48rem) {
+    .jp-header {
+      padding: var(--space-16) var(--container-padding) var(--space-12);
+    }
+
+    .jp-header__title {
+      font-size: var(--font-size-4xl);
+    }
+  }
+
+  /* Body */
+  .jp-body {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: var(--space-10) var(--container-padding) var(--space-16);
+  }
+
+  .jp-section {
+    margin-bottom: var(--space-10);
+  }
+
+  .jp-section__heading {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    color: var(--navy-800);
+    margin: 0 0 var(--space-4);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--neutral-new-200);
+  }
+
+  @media (min-width: 48rem) {
+    .jp-section__heading {
+      font-size: var(--font-size-2xl);
+    }
+  }
+
+  /* Posting details (dl/dt/dd) */
+  .jp-details {
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+  }
+
+  .jp-details__row {
+    display: grid;
+    grid-template-columns: 12rem 1fr;
+    gap: var(--space-4);
+    align-items: baseline;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--neutral-new-100);
+  }
+
+  .jp-details__row:last-child {
+    border-bottom: none;
+  }
+
+  .jp-details__row dt {
+    color: var(--neutral-new-600);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: var(--font-weight-semibold);
+    margin: 0;
+  }
+
+  .jp-details__row dd {
+    color: var(--neutral-new-900);
+    margin: 0;
+    line-height: var(--line-height-normal);
+  }
+
+  .jp-details__email {
+    color: var(--navy-600);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .jp-details__email:hover,
+  .jp-details__email:focus-visible {
+    color: var(--navy-800);
+  }
+
+  @media (max-width: 32rem) {
+    .jp-details__row {
+      grid-template-columns: 1fr;
+      gap: var(--space-1);
+    }
+  }
+
+  /* Duties / requirements lists */
+  .jp-list {
+    margin: 0;
+    padding-left: var(--space-6);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+    color: var(--neutral-new-800);
+  }
+
+  .jp-list li {
+    margin-bottom: var(--space-2);
+  }
+
+  /* PDF download */
+  .jp-download {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 2.75rem;
+    padding: var(--space-3) var(--space-5);
+    background: var(--neutral-new-50);
+    border: 1px solid var(--neutral-new-200);
+    border-radius: var(--border-radius-sm);
+    color: var(--navy-700);
+    text-decoration: none;
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-base);
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  .jp-download:hover {
+    background: var(--neutral-new-100);
+    border-color: var(--navy-500);
+    color: var(--navy-800);
+  }
+
+  .jp-download:focus-visible {
+    outline: 3px solid var(--gold-500);
+    outline-offset: 2px;
+  }
+
+  .jp-download__icon {
+    flex-shrink: 0;
+    color: var(--gold-500);
+  }
+</style>

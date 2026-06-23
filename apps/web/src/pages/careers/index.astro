@@ -1,0 +1,132 @@
+---
+/**
+ * Careers Listing Page
+ *
+ * Lists currently open job postings. Closed postings are reachable via direct
+ * URL (audit retention) but are not surfaced in this index.
+ *
+ * Visual chrome mirrors /news/index.astro: full-bleed PageHero with a campus
+ * image, then a responsive 1 -> 2 -> 3 grid of JobPostingCards.
+ *
+ * SSR: newly published postings appear without a redeploy.
+ */
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import JobPostingCard from '../../components/JobPostingCard.astro';
+import { loadQuery } from '../../sanity/lib/load-query';
+
+interface JobPostingListing {
+  _id: string;
+  positionTitle: string;
+  slug: { current: string };
+  postingStartDate: string;
+  postingEndDate: string;
+  worksiteAddress: string;
+  salary: string;
+}
+
+const { data: postings } = await loadQuery<JobPostingListing[]>({
+  query: `*[_type == "jobPosting" && archived != true && (postingEndDate + "T23:59:59Z") >= now()] | order(postingStartDate desc) {
+    _id,
+    positionTitle,
+    slug,
+    postingStartDate,
+    postingEndDate,
+    worksiteAddress,
+    salary
+  }`,
+});
+
+const careersHeroImage = {
+  asset: { _ref: 'image-d441a71d523a9640cb0d7783bf2d86013c91de87-2400x1200-jpg' },
+  alt: 'Springfield Commonwealth Academy campus',
+};
+---
+
+<BaseLayout
+  title="Careers"
+  description="Open positions at Springfield Commonwealth Academy."
+  containerClass="careers-layout"
+>
+  <PageHero image={careersHeroImage} overlayOpacity={55}>
+    <h1 class="careers-page-header__title">Careers</h1>
+    <p class="careers-page-header__intro">
+      Open positions at Springfield Commonwealth Academy.
+    </p>
+  </PageHero>
+
+  <div class="careers-listing__container">
+    {postings && postings.length > 0 ? (
+      <div class="careers-listing__grid">
+        {postings.map((p: JobPostingListing) => (
+          <JobPostingCard posting={p} />
+        ))}
+      </div>
+    ) : (
+      <p class="careers-listing__empty">There are no open positions at this time.</p>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  @import '../../styles/global.css';
+
+  /* Full-bleed hero — match /news/index.astro */
+  :global(.main-content:has(.careers-layout)) {
+    padding: 0;
+  }
+
+  .careers-page-header__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-4xl);
+    color: #ffffff;
+    margin: 0 0 var(--space-4);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .careers-page-header__intro {
+    font-size: var(--font-size-lg);
+    color: #ffffff;
+    margin: 0 auto;
+    line-height: var(--line-height-relaxed);
+    max-width: 50ch;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  @media (min-width: 48rem) {
+    .careers-page-header__title {
+      font-size: var(--font-size-5xl);
+    }
+  }
+
+  .careers-listing__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+    padding: var(--space-12) var(--container-padding);
+  }
+
+  .careers-listing__grid {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  @media (min-width: 48rem) {
+    .careers-listing__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .careers-listing__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .careers-listing__empty {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: var(--space-12) 0;
+  }
+</style>

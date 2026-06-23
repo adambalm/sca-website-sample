@@ -1,0 +1,217 @@
+---
+import { urlFor } from '../../sanity/lib/image'
+
+interface Props {
+  section: any
+  headingLevel: string
+}
+
+const { section, headingLevel } = Astro.props
+const HeadingTag = headingLevel as any
+const cards = section.cards || []
+---
+
+<section class="cg-section">
+  <div class="cg-section__container">
+    {section.heading && (
+      <HeadingTag class="cg-section__heading">{section.heading}</HeadingTag>
+    )}
+    {section.subtitle && (
+      <p class="cg-section__subtitle">{section.subtitle}</p>
+    )}
+    <div class="cg-section__grid">
+      {cards.map((card: any) => {
+        const inner = (
+          <>
+            {card.image?.asset && (
+              <div class="cg-card__image-wrap">
+                <img
+                  src={urlFor(card.image).width(600).height(400).auto('format').url()}
+                  alt={card.image.alt || card.title || ''}
+                  class="cg-card__img"
+                  loading="lazy"
+                />
+              </div>
+            )}
+            <div class="cg-card__content">
+              {card.icon && (
+                <div class="cg-card__icon" data-icon={card.icon}>
+                  {card.icon === 'brain' && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+                      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+                    </svg>
+                  )}
+                  {card.icon === 'book-open' && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                  )}
+                  {card.icon === 'trophy' && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                      <path d="M4 22h16"/>
+                      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/>
+                      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/>
+                      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+                    </svg>
+                  )}
+                  {card.icon === 'graduation-cap' && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M22 10v6"/>
+                      <path d="M2 10l10-5 10 5-10 5z"/>
+                      <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                    </svg>
+                  )}
+                  {card.icon === 'users' && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                  )}
+                  {card.icon === 'globe' && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="2" y1="12" x2="22" y2="12"/>
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                  )}
+                </div>
+              )}
+              <h3 class="cg-card__title">{card.title}</h3>
+              {card.description && (
+                <p class="cg-card__description">{card.description}</p>
+              )}
+            </div>
+          </>
+        )
+
+        return card.href ? (
+          <a href={card.href} class="cg-card cg-card--link" data-key={card._key}>
+            {inner}
+          </a>
+        ) : (
+          <div class="cg-card" data-key={card._key}>
+            {inner}
+          </div>
+        )
+      })}
+    </div>
+  </div>
+</section>
+
+<style>
+  .cg-section {
+    padding: var(--space-20) var(--container-padding);
+    background-color: #ffffff;
+  }
+
+  .cg-section__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+  }
+
+  .cg-section__heading {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: var(--navy-900);
+    text-align: center;
+    margin: 0 0 var(--space-4);
+  }
+
+  .cg-section__subtitle {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-lg);
+    color: var(--neutral-new-600);
+    text-align: center;
+    max-width: 55ch;
+    margin: 0 auto var(--space-10);
+    line-height: var(--line-height-relaxed);
+  }
+
+  .cg-section__grid {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: 1fr;
+  }
+
+  .cg-card {
+    background-color: var(--neutral-new-50);
+    border: 1px solid var(--neutral-new-200);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 300ms ease-out, box-shadow 300ms ease-out, border-color 300ms ease-out;
+  }
+
+  .cg-card--link {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .cg-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+    border-color: var(--gold-300);
+    background-color: #ffffff;
+  }
+
+  .cg-card__image-wrap {
+    overflow: hidden;
+  }
+
+  .cg-card__img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: var(--aspect-card);
+    object-fit: cover;
+    display: block;
+  }
+
+  .cg-card__content {
+    padding: var(--space-6);
+    text-align: center;
+  }
+
+  .cg-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(201, 162, 39, 0.12) 0%, rgba(201, 162, 39, 0.04) 100%);
+    color: var(--gold-500);
+    margin-bottom: var(--space-5);
+  }
+
+  .cg-card__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--navy-800);
+    margin: 0 0 var(--space-3);
+  }
+
+  .cg-card__description {
+    font-size: var(--font-size-sm);
+    color: var(--neutral-new-600);
+    line-height: var(--line-height-relaxed);
+    margin: 0;
+  }
+
+  @media (min-width: 48rem) {
+    .cg-section__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .cg-section__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

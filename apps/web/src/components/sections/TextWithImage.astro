@@ -1,0 +1,195 @@
+---
+import PortableText from '../PortableText.astro'
+import { urlFor, hotspotToPosition } from '../../sanity/lib/image'
+import { stegaClean } from '@sanity/client/stega'
+
+interface Props {
+  section: any
+  headingLevel: string
+}
+
+const { section, headingLevel } = Astro.props
+const HeadingTag = headingLevel as any
+const orientation = stegaClean(section.orientation) || 'imageRight'
+const layout = stegaClean(section.layout) || 'standard'
+const hasImage = !!section.image?.asset
+const isPortrait = layout === 'portrait'
+const floatDir = orientation === 'imageLeft' ? 'left' : 'right'
+const imgObjectPosition = hasImage ? hotspotToPosition(section.image?.hotspot) : 'center 30%'
+---
+
+<section class:list={['twi-section', `twi-section--${orientation}`, `twi-section--${layout}`, { 'twi-section--no-image': !hasImage }]}>
+  <div class="twi-section__container">
+    {isPortrait ? (
+      <!-- Portrait: grid layout (image in fixed column, text in flex column).
+           Uses grid — not float — so the last word of body copy cannot orphan
+           below the image. -->
+      <div class:list={['twi-section__flow', `twi-section__flow--${floatDir}`]}>
+        {hasImage && (
+          <img
+            src={urlFor(section.image).width(480).auto('format').url()}
+            alt={section.image.alt || section.heading || ''}
+            class:list={['twi-section__float-img', `twi-section__float-img--${floatDir}`]}
+            style={`object-position: ${imgObjectPosition}`}
+            loading="lazy"
+          />
+        )}
+        <div class="twi-section__text-col">
+          {section.heading && (
+            <HeadingTag class="twi-section__heading">{section.heading}</HeadingTag>
+          )}
+          {section.content && (
+            <div class="twi-section__body">
+              <PortableText value={section.content} />
+            </div>
+          )}
+        </div>
+      </div>
+    ) : (
+      <!-- Standard: grid layout -->
+      <Fragment>
+        <div class="twi-section__text">
+          {section.heading && (
+            <HeadingTag class="twi-section__heading">{section.heading}</HeadingTag>
+          )}
+          {section.content && (
+            <div class="twi-section__body">
+              <PortableText value={section.content} />
+            </div>
+          )}
+        </div>
+        {hasImage && (
+          <div class="twi-section__media">
+            <img
+              src={urlFor(section.image).width(800).auto('format').url()}
+              alt={section.image.alt || section.heading || ''}
+              class="twi-section__img"
+              style={`object-position: ${imgObjectPosition}`}
+              loading="lazy"
+            />
+          </div>
+        )}
+      </Fragment>
+    )}
+  </div>
+</section>
+
+<style>
+  .twi-section {
+    padding: var(--space-16) var(--container-padding);
+    background-color: #ffffff;
+  }
+
+  .twi-section__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+    display: grid;
+    gap: var(--space-8);
+    align-items: center;
+  }
+
+  .twi-section__heading {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: var(--navy-900);
+    margin: 0 0 var(--space-6);
+    line-height: 1.15;
+  }
+
+  .twi-section__body {
+    font-size: var(--font-size-base);
+    line-height: 1.7;
+    color: var(--neutral-new-700);
+  }
+
+  .twi-section__body :global(p) {
+    margin: 0 0 var(--space-4);
+  }
+
+  .twi-section__img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--border-radius-lg);
+    aspect-ratio: var(--aspect-split);
+    object-fit: cover;
+  }
+
+  /* No image: single-column centered text */
+  .twi-section--no-image .twi-section__container {
+    max-width: 780px;
+  }
+
+  /* --- Portrait grid layout ---
+     Image sits in its own column; text in the adjacent column. No float,
+     so the last paragraph's last word cannot wrap below the image.
+
+     The outer container MUST stay single-column in portrait so the inner
+     flow grid (image-col + text-col) fills the full width. Without this
+     override, the standard layout's 1fr 1fr container at desktop squeezes
+     the whole portrait flow into half the viewport. */
+  .twi-section--portrait .twi-section__container {
+    max-width: var(--max-width-wide);
+    grid-template-columns: 1fr;
+  }
+
+  .twi-section--portrait .twi-section__flow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  .twi-section__float-img {
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+    border-radius: var(--border-radius-lg);
+    display: block;
+    margin: 0 auto;
+    object-fit: cover;
+  }
+
+  @media (min-width: 48rem) {
+    /* Standard grid layout */
+    .twi-section__container {
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-12);
+    }
+
+    .twi-section--no-image .twi-section__container,
+    .twi-section--portrait .twi-section__container {
+      grid-template-columns: 1fr;
+    }
+
+    .twi-section--imageLeft .twi-section__media {
+      order: -1;
+    }
+
+    /* Portrait grid: fixed image column + flexible text column */
+    .twi-section--portrait .twi-section__flow--left {
+      grid-template-columns: 280px 1fr;
+      gap: var(--space-10);
+    }
+
+    .twi-section--portrait .twi-section__flow--right {
+      grid-template-columns: 1fr 280px;
+      gap: var(--space-10);
+    }
+
+    .twi-section--portrait .twi-section__flow--right .twi-section__float-img {
+      order: 2;
+    }
+
+    .twi-section__float-img {
+      width: 100%;
+      max-width: 320px;
+      margin: 0;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .twi-section__heading {
+      font-size: var(--font-size-4xl);
+    }
+  }
+</style>

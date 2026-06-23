@@ -1,0 +1,288 @@
+---
+import { loadQuery } from '../../sanity/lib/load-query'
+import { urlFor } from '../../sanity/lib/image'
+
+interface Props {
+  section: any
+  headingLevel: string
+}
+
+const { section, headingLevel } = Astro.props
+const HeadingTag = headingLevel as any
+
+const category = section.filterByCategory || ''
+const maxEvents = section.maxEvents || 6
+
+// Single GROQ query resolves events → program → coach in one fetch
+const categoryFilter = category ? `&& category == "${category}"` : ''
+const { data: events } = await loadQuery<any[]>({
+  query: `*[_type == "event" && startDate > now() ${categoryFilter}] | order(startDate asc) [0...${maxEvents}] {
+    _id,
+    title,
+    slug,
+    startDate,
+    endDate,
+    allDay,
+    location,
+    category,
+    image,
+    "programName": program->name,
+    "programSlug": program->slug.current,
+    "coachName": program->coach->name,
+    "coachPhoto": program->coach->photo
+  }`,
+})
+---
+
+<section class="ue-section">
+  <div class="ue-section__container">
+    {section.heading && (
+      <HeadingTag class="ue-section__heading">{section.heading}</HeadingTag>
+    )}
+    {section.subtitle && (
+      <p class="ue-section__subtitle">{section.subtitle}</p>
+    )}
+
+    {(!events || events.length === 0) ? (
+      <p class="ue-section__empty">No upcoming events scheduled.</p>
+    ) : (
+      <div class="ue-section__grid">
+        {events.map((event: any) => {
+          const date = new Date(event.startDate)
+          const TZ = 'America/New_York'
+          const month = date.toLocaleDateString('en-US', { month: 'short', timeZone: TZ }).toUpperCase()
+          const day = date.toLocaleDateString('en-US', { day: 'numeric', timeZone: TZ })
+          const time = event.allDay ? 'All Day' : date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: TZ }) + ' ET'
+          const weekday = date.toLocaleDateString('en-US', { weekday: 'long', timeZone: TZ })
+
+          return (
+            <article class="ue-card">
+              <div class="ue-card__date-badge">
+                <span class="ue-card__month">{month}</span>
+                <span class="ue-card__day">{day}</span>
+              </div>
+              <div class="ue-card__content">
+                <h3 class="ue-card__title">{event.title}</h3>
+                <div class="ue-card__meta">
+                  <span class="ue-card__time">{weekday}, {time}</span>
+                  {event.location && <span class="ue-card__location">{event.location}</span>}
+                </div>
+                {event.programName && (
+                  <div class="ue-card__program">
+                    {event.coachPhoto?.asset && (
+                      <img
+                        src={urlFor(event.coachPhoto).width(48).height(48).auto('format').url()}
+                        alt={event.coachName || ''}
+                        class="ue-card__coach-photo"
+                      />
+                    )}
+                    <div class="ue-card__program-info">
+                      <span class="ue-card__program-name">{event.programName}</span>
+                      {event.coachName && <span class="ue-card__coach-name">Coach: {event.coachName}</span>}
+                    </div>
+                  </div>
+                )}
+                {event.category && (
+                  <span class={`ue-card__category ue-card__category--${event.category}`}>{event.category}</span>
+                )}
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .ue-section {
+    padding: var(--space-16) var(--container-padding);
+    background: var(--neutral-new-50);
+  }
+
+  .ue-section__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+  }
+
+  .ue-section__heading {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: var(--navy-800);
+    text-align: center;
+    margin: 0 0 var(--space-3);
+  }
+
+  .ue-section__subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--neutral-new-600);
+    text-align: center;
+    max-width: 50ch;
+    margin: 0 auto var(--space-10);
+    line-height: var(--line-height-relaxed);
+  }
+
+  .ue-section__empty {
+    text-align: center;
+    color: var(--neutral-new-500);
+    padding: var(--space-12) 0;
+  }
+
+  .ue-section__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  @media (min-width: 40rem) {
+    .ue-section__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .ue-section__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* Event card */
+  .ue-card {
+    display: flex;
+    gap: var(--space-4);
+    background: #ffffff;
+    border: 1px solid var(--neutral-new-200);
+    border-radius: 12px;
+    padding: var(--space-5);
+    transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+  }
+
+  .ue-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Date badge */
+  .ue-card__date-badge {
+    flex-shrink: 0;
+    width: 56px;
+    text-align: center;
+    background: var(--navy-800);
+    border-radius: 8px;
+    padding: var(--space-2) var(--space-2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ue-card__month {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    color: var(--gold-400);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .ue-card__day {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: #ffffff;
+    line-height: 1;
+  }
+
+  /* Content */
+  .ue-card__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ue-card__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-base);
+    color: var(--navy-800);
+    margin: 0 0 var(--space-1);
+    line-height: var(--line-height-snug);
+  }
+
+  .ue-card__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: var(--space-3);
+  }
+
+  .ue-card__time,
+  .ue-card__location {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: var(--neutral-new-600);
+  }
+
+  .ue-card__location::before {
+    content: '\1F4CD ';
+  }
+
+  /* Program + coach */
+  .ue-card__program {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--neutral-new-100);
+  }
+
+  .ue-card__coach-photo {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .ue-card__program-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ue-card__program-name {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--navy-700);
+  }
+
+  .ue-card__coach-name {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    color: var(--neutral-new-500);
+  }
+
+  /* Category badge */
+  .ue-card__category {
+    display: inline-block;
+    margin-top: var(--space-2);
+    font-family: var(--font-family-sans);
+    font-size: 11px;
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: var(--border-radius-sm);
+    background: var(--neutral-new-100);
+    color: var(--neutral-new-600);
+  }
+
+  .ue-card__category--athletics { background: #dbeafe; color: #1e40af; }
+  .ue-card__category--academic { background: #dcfce7; color: #166534; }
+  .ue-card__category--admissions { background: #fef3c7; color: #92400e; }
+  .ue-card__category--community { background: #f3e8ff; color: #6b21a8; }
+  .ue-card__category--holiday { background: #fce7f3; color: #9d174d; }
+
+  @media (min-width: 48rem) {
+    .ue-section__heading {
+      font-size: var(--font-size-4xl);
+    }
+  }
+</style>

@@ -1,0 +1,122 @@
+---
+/**
+ * News Listing Page
+ *
+ * Displays all news articles with links to individual article pages.
+ * SSR: content updates immediately when editors publish in Sanity.
+ */
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import NewsCard from '../../components/NewsCard.astro';
+import { loadQuery } from '../../sanity/lib/load-query';
+
+// Fetch all published news articles
+const { data: news } = await loadQuery<any[]>({
+  query: `*[_type == "news"] | order(date desc) {
+    _id,
+    title,
+    slug,
+    date,
+    summary,
+    featured,
+    image
+  }`,
+});
+
+// Hardcoded hero image — TODO: move to CMS (siteSettings or a dedicated news config)
+const newsHeroImage = {
+  asset: { _ref: 'image-bc60e040fcc85054ab278d52919aa05c1c735767-2400x1200-jpg' },
+  alt: 'SCA students in red shirts presenting at the SCISS Opening Ceremony',
+};
+---
+
+<BaseLayout title="News" description="Stay current with Springfield Commonwealth Academy events, student achievements, global programs, and campus life updates." containerClass="news-layout">
+  <PageHero image={newsHeroImage} overlayOpacity={55}>
+    <h1 class="news-page-header__title">News</h1>
+    <p class="news-page-header__intro">
+      Stay up to date with the latest news and events from Springfield Commonwealth Academy.
+    </p>
+  </PageHero>
+
+  <div class="news-listing__container">
+    {news && news.length > 0 ? (
+      <div class="news-listing__grid">
+        {news.map((article: any) => (
+          <NewsCard article={article} />
+        ))}
+      </div>
+    ) : (
+      <p class="news-listing__empty">No news articles published yet.</p>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  @import '../../styles/global.css';
+
+  /* Remove main-content padding for full-bleed header */
+  :global(.main-content:has(.news-layout)) {
+    padding: 0;
+  }
+
+  /* Hero layout handled by PageHero component */
+
+  .news-page-header__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-4xl);
+    color: #ffffff;
+    margin: 0 0 var(--space-4);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .news-page-header__intro {
+    font-size: var(--font-size-lg);
+    color: #ffffff;
+    margin: 0;
+    line-height: var(--line-height-relaxed);
+    max-width: 50ch;
+    margin: 0 auto;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  @media (min-width: 48rem) {
+    .news-page-header {
+      padding: var(--space-24) var(--container-padding) var(--space-14);
+      min-height: 400px;
+    }
+    .news-page-header__title {
+      font-size: var(--font-size-5xl);
+    }
+  }
+
+  .news-listing__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+    padding: var(--space-12) var(--container-padding);
+  }
+
+  .news-listing__grid {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  @media (min-width: 48rem) {
+    .news-listing__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .news-listing__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .news-listing__empty {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: var(--space-12) 0;
+  }
+</style>

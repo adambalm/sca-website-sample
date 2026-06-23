@@ -1,0 +1,839 @@
+---
+/**
+ * Reskinning Guide — internal reference for developers and stakeholders.
+ *
+ * Walks through the three layers that control visual appearance on the
+ * SCA site:
+ *   1. Sitewide chrome (BaseLayout)
+ *   2. Design tokens (theme files)
+ *   3. Per-block scoped CSS
+ *
+ * Companion to /admin/block-library — that page shows what blocks
+ * exist; this one shows where to change how they look.
+ *
+ * Internal-only. noindex but reachable by URL. Prerendered.
+ */
+export const prerender = true
+
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { Code } from 'astro:components'
+
+const tokenExample = `:root {
+  /* Navy palette */
+  --navy-900: #0A1628;
+  --navy-800: #0d1b2a;
+  --navy-700: #1e3a5f;
+
+  /* Gold accent palette */
+  --gold-600: #A68520;
+  --gold-500: #C9A227;
+  --gold-400: #D4B43A;
+
+  /* Semantic mappings */
+  --color-text-primary: var(--neutral-new-900);
+  --color-link: var(--navy-600);
+  --focus-ring-color: var(--gold-500);
+
+  /* Typography */
+  --font-family-heading: 'Cormorant Garamond', Georgia, serif;
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+}`
+
+const blockCssExample = `.cg-card {
+  background-color: var(--neutral-new-50);
+  border: 1px solid var(--neutral-new-200);
+  border-radius: 12px;
+  transition: transform 300ms ease-out, box-shadow 300ms ease-out;
+}
+
+.cg-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  border-color: var(--gold-300);
+  background-color: #ffffff;
+}`
+
+const themeToggleExample = `// apps/web/src/styles/themes/theme-default.css
+[data-theme="default"],
+:root {
+  --navy-800: #0d1b2a;     /* original navy */
+  --gold-500: #C9A227;     /* original gold */
+  --font-family-heading: 'Cormorant Garamond', Georgia, serif;
+}
+
+// apps/web/src/styles/themes/theme-alt.css
+[data-theme="alt"] {
+  --navy-800: #122B1E;     /* forest green replaces navy */
+  --gold-500: #DAA520;     /* warm amber replaces gold */
+  --font-family-heading: Georgia, "Times New Roman", serif;
+}`
+
+const newBlockVariantExample = `// In apps/sca-studio/schemaTypes/blocks/cardGrid.ts
+defineField({
+  name: 'variant',
+  title: 'Color variant',
+  type: 'string',
+  options: {
+    list: [
+      { title: 'Light (default)', value: 'light' },
+      { title: 'Navy', value: 'navy' },
+    ],
+    layout: 'radio',
+  },
+  initialValue: 'light',
+})
+
+// In apps/web/src/components/sections/CardGrid.astro
+const variant = stegaClean(section.variant) || 'light'
+---
+<section class:list={['cg-section', \`cg-section--\${variant}\`]}>
+  ...
+</section>
+
+<style>
+  .cg-section--navy {
+    background-color: var(--navy-800);
+    color: var(--color-text-inverse);
+  }
+  .cg-section--navy .cg-card {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+</style>`
+
+const accentChangeExample = `// Before — apps/web/src/styles/themes/theme-default.css
+[data-theme="default"], :root {
+  --gold-500: #C9A227;     /* warm gold */
+  --gold-400: #D4B43A;
+  --gold-300: #E0C85C;
+}
+
+// After — change to a deeper amber
+[data-theme="default"], :root {
+  --gold-500: #B8860B;     /* deeper amber */
+  --gold-400: #C99A1F;
+  --gold-300: #D6AE3A;
+}`
+---
+
+<BaseLayout
+  title="Reskinning Guide"
+  description="Internal reference page explaining where visual changes are made on the SCA site, with worked examples."
+  containerClass="rg-layout"
+  noindex
+>
+  <div class="rg">
+    <header class="rg-header">
+      <p class="rg-header__eyebrow">Internal · noindex · URL is not access control</p>
+      <h1 class="rg-header__title">Reskinning Guide</h1>
+      <p class="rg-header__lede">
+        How visual changes are made on the SCA site. Designed to be readable without a guide
+        in the room. Walks through the three layers that control appearance, with worked
+        examples for the most common changes.
+      </p>
+      <p class="rg-header__companion">
+        Companion to <a href="/admin/block-library">/admin/block-library</a> — that page
+        shows <em>what blocks exist</em>; this one shows <em>where to change how they look</em>.
+      </p>
+    </header>
+
+    <nav class="rg-toc" aria-label="On this page">
+      <p class="rg-toc__heading">On this page</p>
+      <ol class="rg-toc__list">
+        <li><a href="#three-layers">The three layers (overview)</a></li>
+        <li><a href="#layer-1">Layer 1 — Sitewide chrome</a></li>
+        <li><a href="#layer-2">Layer 2 — Design tokens (themes)</a></li>
+        <li><a href="#layer-3">Layer 3 — Per-block scoped CSS</a></li>
+        <li><a href="#example-accent">Example A — Change the accent color sitewide</a></li>
+        <li><a href="#example-theme">Example B — See the alternate theme right now</a></li>
+        <li><a href="#example-variant">Example C — Add a navy variant to one block</a></li>
+        <li><a href="#editor-boundary">What editors cannot change (and why that's a feature)</a></li>
+        <li><a href="#decision-tree">Decision tree: where do I edit X?</a></li>
+        <li><a href="#what-we-do-not-have">What this guide doesn't cover (yet)</a></li>
+      </ol>
+    </nav>
+
+    <section id="three-layers" class="rg-section">
+      <h2 class="rg-section__title">The three layers (overview)</h2>
+      <p>
+        Visual identity on this site comes from three layers, applied in cascade. A change
+        at any layer affects everything below it. Knowing which layer to edit is the whole
+        skill of "reskinning."
+      </p>
+
+      <div class="rg-layers">
+        <div class="rg-layer">
+          <p class="rg-layer__num">1</p>
+          <p class="rg-layer__title">Sitewide chrome</p>
+          <p class="rg-layer__where">apps/web/src/layouts/BaseLayout.astro</p>
+          <p class="rg-layer__desc">
+            Header, footer, font loading, body wrapper, page-level meta. Every page wraps
+            in this. One file controls the frame around every block.
+          </p>
+        </div>
+        <div class="rg-layer">
+          <p class="rg-layer__num">2</p>
+          <p class="rg-layer__title">Design tokens</p>
+          <p class="rg-layer__where">apps/web/src/styles/global.css + themes/*.css</p>
+          <p class="rg-layer__desc">
+            CSS custom properties for colors, typography, spacing. Tokens cascade into every
+            block. Change a token value and the whole site shifts. Themes are different
+            sets of token values selected by a <code>data-theme</code> attribute.
+          </p>
+        </div>
+        <div class="rg-layer">
+          <p class="rg-layer__num">3</p>
+          <p class="rg-layer__title">Per-block scoped CSS</p>
+          <p class="rg-layer__where">apps/web/src/components/sections/&lt;Block&gt;.astro</p>
+          <p class="rg-layer__desc">
+            Each block has scoped CSS at the bottom of its <code>.astro</code> file. Layout,
+            spacing, hover states, breakpoints. Changes here affect that one block sitewide
+            without touching anything else.
+          </p>
+        </div>
+      </div>
+
+      <p class="rg-callout">
+        <strong>Mental model:</strong> the token layer is the design system; the block layer
+        is the implementation; the chrome layer is the frame. Reskinning usually starts at
+        the token layer (broad sweep) and only descends to the block layer when a single
+        component needs a non-themed adjustment.
+      </p>
+    </section>
+
+    <section id="layer-1" class="rg-section">
+      <h2 class="rg-section__title">Layer 1 — Sitewide chrome</h2>
+      <p class="rg-section__where">
+        File: <code>apps/web/src/layouts/BaseLayout.astro</code>
+      </p>
+      <p>
+        BaseLayout is the wrapper every page uses. It owns:
+      </p>
+      <ul class="rg-list">
+        <li>The site header (CMS-driven nav from Sanity, with a hardcoded fallback)</li>
+        <li>The site footer (CMS-driven, same pattern)</li>
+        <li><code>&lt;head&gt;</code> meta — title, description, OG tags, JSON-LD schema</li>
+        <li>Font preload tags pointing at <code>/fonts/cormorant-garamond-latin.woff2</code> and <code>/fonts/inter-latin.woff2</code></li>
+        <li>The optional announcement banner</li>
+        <li>A theme switch via <code>data-theme</code> attribute on <code>&lt;html&gt;</code> (driven by <code>?theme=</code> query param)</li>
+      </ul>
+      <p>
+        <strong>Edit BaseLayout when:</strong> you want to change the site's overall structure
+        — different header layout, different footer columns, a banner, a global script load,
+        etc.
+      </p>
+      <p>
+        <strong>Don't edit BaseLayout when:</strong> you want to change colors, fonts, or
+        spacing. Those live in tokens (Layer 2).
+      </p>
+    </section>
+
+    <section id="layer-2" class="rg-section">
+      <h2 class="rg-section__title">Layer 2 — Design tokens (themes)</h2>
+      <p class="rg-section__where">
+        Files: <code>apps/web/src/styles/global.css</code> +
+        <code>apps/web/src/styles/themes/theme-default.css</code> +
+        <code>apps/web/src/styles/themes/theme-alt.css</code>
+      </p>
+      <p>
+        Tokens are CSS custom properties (<code>--gold-500</code>, <code>--font-family-heading</code>,
+        <code>--space-6</code>, etc.) defined at the <code>:root</code> level so they cascade
+        into every component. Block-level CSS reads tokens — never literal colors or font names —
+        which is what makes site-wide reskinning possible.
+      </p>
+
+      <Code lang="css" code={tokenExample} theme="github-dark" />
+
+      <h3 class="rg-section__subtitle">What's in each file</h3>
+      <ul class="rg-list">
+        <li>
+          <strong><code>global.css</code></strong> — non-themed tokens (font sizes, line
+          heights, spacing scale, accent colors for success/warning/error UI). These don't
+          change between themes.
+        </li>
+        <li>
+          <strong><code>themes/theme-default.css</code></strong> — themed tokens for the
+          default look: navy palette, gold accents, Cormorant Garamond + Inter typography.
+          Applied via <code>:root</code> AND <code>[data-theme="default"]</code> so it's
+          the default state.
+        </li>
+        <li>
+          <strong><code>themes/theme-alt.css</code></strong> — themed tokens for the
+          alternate look: forest greens, warm amber accents, Georgia heading typography.
+          Applied via <code>[data-theme="alt"]</code> only.
+        </li>
+      </ul>
+
+      <p>
+        <strong>Edit a theme file when:</strong> you want to change colors, typography, or
+        any visual property that should propagate across every page and every block.
+      </p>
+      <p>
+        <strong>Add a new theme file when:</strong> you want to support multiple visual
+        identities the user can switch between (like a high-contrast variant, a holiday
+        palette, or a future spinoff brand).
+      </p>
+    </section>
+
+    <section id="layer-3" class="rg-section">
+      <h2 class="rg-section__title">Layer 3 — Per-block scoped CSS</h2>
+      <p class="rg-section__where">
+        Files: <code>apps/web/src/components/sections/&lt;BlockName&gt;.astro</code>
+        (eleven of them)
+      </p>
+      <p>
+        Each block component has scoped CSS at the bottom of its <code>.astro</code> file.
+        "Scoped" means Astro auto-namespaces these styles so they can't leak to other blocks.
+        Block CSS reads tokens (Layer 2), so changing a token value automatically updates
+        every block that uses it.
+      </p>
+
+      <Code lang="css" code={blockCssExample} theme="github-dark" />
+
+      <p>
+        Notice every color and shape value reads from a token (<code>var(--neutral-new-50)</code>,
+        <code>var(--gold-300)</code>, etc.). The block doesn't know what color "gold-300"
+        actually is — it just trusts that the token holds the right value for the current
+        theme.
+      </p>
+
+      <h3 class="rg-section__subtitle">When to edit per-block CSS</h3>
+      <ul class="rg-list">
+        <li>One block needs a layout change (spacing, breakpoints, grid columns).</li>
+        <li>A specific hover or focus interaction.</li>
+        <li>A non-themed visual flourish unique to one component.</li>
+      </ul>
+
+      <h3 class="rg-section__subtitle">When NOT to edit per-block CSS</h3>
+      <ul class="rg-list">
+        <li>You want to change a color across all blocks → edit the token (Layer 2).</li>
+        <li>You want to swap the heading font sitewide → edit the token (Layer 2).</li>
+        <li>You want to change spacing between sections → edit BaseLayout or section padding via tokens.</li>
+      </ul>
+    </section>
+
+    <section id="example-accent" class="rg-section">
+      <h2 class="rg-section__title">Example A — Change the accent color sitewide</h2>
+      <p>
+        Suppose you want the gold accents (used in CTAs, focus rings, hover borders) to
+        be a deeper amber.
+      </p>
+
+      <p><strong>Where to edit:</strong> <code>apps/web/src/styles/themes/theme-default.css</code></p>
+
+      <Code lang="css" code={accentChangeExample} theme="github-dark" />
+
+      <p><strong>What changes:</strong> every CTA button border, every hover state on cards,
+        every focus ring, every <code>:hover</code> color that reads from <code>--gold-*</code> —
+        across all 11 blocks, every page, every breakpoint. One file, ~3 lines.</p>
+
+      <p><strong>What doesn't change:</strong> the structural layout, spacing, or typography.
+        Tokens are scoped to color in this case.</p>
+
+      <p><strong>How to test:</strong> save the file, refresh any page locally
+        (<code>npm run dev:web</code> → <code>http://localhost:4321</code>). The change is
+        visible immediately because the dev server hot-reloads CSS. No build, no deploy.</p>
+    </section>
+
+    <section id="example-theme" class="rg-section">
+      <h2 class="rg-section__title">Example B — See the alternate theme right now</h2>
+      <p>
+        The site already ships with a second theme. You can preview it without any code
+        changes by appending <code>?theme=alt</code> to any URL. <code>BaseLayout.astro</code>
+        reads the query param and sets <code>data-theme="alt"</code> on the document root,
+        which activates the <code>theme-alt.css</code> token values.
+      </p>
+
+      <p><strong>Live demo links</strong> (open in a new tab to compare):</p>
+      <ul class="rg-list">
+        <li>
+          <a href="/?theme=default" target="_blank" rel="noopener">Homepage — default theme</a>
+          (navy + gold + Cormorant Garamond)
+        </li>
+        <li>
+          <a href="/?theme=alt" target="_blank" rel="noopener">Homepage — alt theme</a>
+          (forest + amber + Georgia)
+        </li>
+        <li>
+          <a href="/about?theme=alt" target="_blank" rel="noopener">/about — alt theme</a>
+        </li>
+        <li>
+          <a href="/admin/block-library?theme=alt" target="_blank" rel="noopener">
+            Block library — alt theme
+          </a>
+          — every block in the alternate palette, side-by-side
+        </li>
+      </ul>
+
+      <p>
+        <strong>Why this works:</strong> every block reads tokens, never hardcoded colors.
+        The two theme files swap in different values for the same token names. Same HTML,
+        different CSS variable bindings, different output. No JavaScript involved beyond
+        the query-param read.
+      </p>
+
+      <Code lang="css" code={themeToggleExample} theme="github-dark" />
+
+      <p>
+        <strong>To add a third theme:</strong> create
+        <code>apps/web/src/styles/themes/theme-yourname.css</code>, scope it to
+        <code>[data-theme="yourname"]</code>, override the tokens you want to change, import
+        it from <code>global.css</code>. The query-param mechanism in BaseLayout will pick
+        it up automatically.
+      </p>
+    </section>
+
+    <section id="example-variant" class="rg-section">
+      <h2 class="rg-section__title">Example C — Add a navy variant to one block</h2>
+      <p>
+        Sometimes a block needs to look different in different contexts — a card grid that's
+        dark-on-light most of the time but light-on-dark for a "highlighted programs" row,
+        for example. The right pattern is a schema-level variant + a CSS modifier class.
+      </p>
+
+      <p><strong>Where to edit:</strong> two files — the schema and the renderer.</p>
+      <ul class="rg-list">
+        <li>
+          <code>apps/sca-studio/schemaTypes/blocks/cardGrid.ts</code> — add a
+          <code>variant</code> field with <code>options.list</code> for the editor to pick.
+        </li>
+        <li>
+          <code>apps/web/src/components/sections/CardGrid.astro</code> — read the variant,
+          apply it as a CSS modifier class, define the variant CSS in the scoped style block.
+        </li>
+      </ul>
+
+      <Code lang="typescript" code={newBlockVariantExample} theme="github-dark" />
+
+      <p>
+        <strong>Why two files:</strong> the schema field is what the editor sees in Studio.
+        The CSS modifier is what the browser sees. Both must agree on the variant names
+        (<code>'light'</code>, <code>'navy'</code> in the example).
+      </p>
+
+      <p>
+        <strong>Why an enum and not free-form:</strong> editors should pick from a controlled
+        list, not type a CSS class name. Free-form would let editors break the design
+        unintentionally; an enum keeps developer-controlled options visible to the editor
+        but locks them down.
+      </p>
+
+      <p>
+        <strong>Why a variant and not a separate block:</strong> the structure and content
+        shape is identical — only the look differs. Two blocks would mean duplicate schema,
+        duplicate renderer, duplicate everything. A variant keeps one source of truth and
+        adds a single modifier dimension.
+      </p>
+    </section>
+
+    <section id="editor-boundary" class="rg-section">
+      <h2 class="rg-section__title">What editors cannot change (and why that's a feature)</h2>
+      <p>
+        Editors using Sanity Studio control content. They cannot accidentally break visual
+        design. The boundary is structural, not by convention:
+      </p>
+
+      <table class="rg-table">
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Editors</th>
+            <th>Developers</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Content (text, images, links)</td>
+            <td>Yes — every field in every document</td>
+            <td>Sometimes — when seeding or migrating</td>
+          </tr>
+          <tr>
+            <td>Block selection &amp; ordering</td>
+            <td>Yes — drag-and-drop in <code>sections[]</code></td>
+            <td>No — once a block exists, editors compose pages</td>
+          </tr>
+          <tr>
+            <td>Block-level options (variant, columns, aspect ratio)</td>
+            <td>Yes — only options the schema exposes</td>
+            <td>Yes — by adding new schema fields</td>
+          </tr>
+          <tr>
+            <td>HTML markup</td>
+            <td>No</td>
+            <td>Yes — in block <code>.astro</code> files</td>
+          </tr>
+          <tr>
+            <td>CSS / colors / typography</td>
+            <td>No</td>
+            <td>Yes — tokens or per-block scoped CSS</td>
+          </tr>
+          <tr>
+            <td>What blocks exist</td>
+            <td>No</td>
+            <td>Yes — schema files in <code>apps/sca-studio/schemaTypes/blocks/</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        This is the structural guarantee that makes a CMS-first architecture worth the
+        coordination overhead. Editors get expressive freedom inside a controlled vocabulary;
+        developers control the vocabulary itself.
+      </p>
+    </section>
+
+    <section id="decision-tree" class="rg-section">
+      <h2 class="rg-section__title">Decision tree: where do I edit X?</h2>
+      <table class="rg-table">
+        <thead>
+          <tr>
+            <th>I want to change…</th>
+            <th>Edit this</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Brand color (gold accent, navy)</td>
+            <td><code>apps/web/src/styles/themes/theme-default.css</code></td>
+          </tr>
+          <tr>
+            <td>Heading or body font</td>
+            <td><code>apps/web/src/styles/themes/theme-default.css</code> (token <code>--font-family-heading</code> / <code>--font-family-sans</code>) + the <code>@font-face</code> block in <code>global.css</code> if loading a new file</td>
+          </tr>
+          <tr>
+            <td>Default spacing scale (gap between sections)</td>
+            <td><code>apps/web/src/styles/global.css</code> (token <code>--space-*</code>)</td>
+          </tr>
+          <tr>
+            <td>Header layout (logo placement, nav structure)</td>
+            <td><code>apps/web/src/layouts/BaseLayout.astro</code></td>
+          </tr>
+          <tr>
+            <td>Footer layout</td>
+            <td><code>apps/web/src/layouts/BaseLayout.astro</code> (markup) + the
+              <code>navigation</code> document type in Sanity (link content)</td>
+          </tr>
+          <tr>
+            <td>How a Card Grid renders (column count, hover behavior)</td>
+            <td><code>apps/web/src/components/sections/CardGrid.astro</code></td>
+          </tr>
+          <tr>
+            <td>Aspect ratio of the Video Embed frame</td>
+            <td>Schema enum in <code>apps/sca-studio/schemaTypes/blocks/videoEmbed.ts</code> (editor-selectable) +
+              CSS in <code>apps/web/src/components/sections/VideoEmbed.astro</code> (developer-defined)</td>
+          </tr>
+          <tr>
+            <td>Add a new block type entirely</td>
+            <td>Four files: a new schema in <code>schemaTypes/blocks/</code>, a new component in
+              <code>components/sections/</code>, registration in <code>schemaTypes/index.ts</code>
+              and <code>SectionRenderer.astro</code>, plus add it to <code>page.ts</code> /
+              <code>program.ts</code> / <code>homepageConfig.ts</code> allow-lists. See
+              <a href="/admin/block-library">/admin/block-library</a> for the recipe.</td>
+          </tr>
+          <tr>
+            <td>Switch the whole site to a different theme temporarily for review</td>
+            <td>No code. Append <code>?theme=alt</code> to any URL. (Example B above.)</td>
+          </tr>
+          <tr>
+            <td>Add a third theme variant</td>
+            <td>New file in <code>apps/web/src/styles/themes/</code>, import it from
+              <code>global.css</code>, scope its rules to <code>[data-theme="newname"]</code>.
+              (Example B explains the mechanism.)</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="what-we-do-not-have" class="rg-section">
+      <h2 class="rg-section__title">What this guide doesn't cover (yet)</h2>
+      <p>
+        Honest scoping. The guide is V1 and deliberately compact. These items would belong
+        in later iterations:
+      </p>
+      <ul class="rg-list">
+        <li>A <strong>token catalog</strong> listing every CSS custom property with its current
+          value, semantic role, and "safe to override" annotation. Today the source of truth is
+          the theme files themselves; readers have to scroll those.</li>
+        <li><strong>Accessibility annotations</strong> per token (contrast ratios, WCAG flags).</li>
+        <li><strong>Component states matrix</strong> — default / hover / focus / disabled
+          variants visualized side-by-side per block.</li>
+        <li><strong>Visual regression baseline</strong> — screenshots of every block in both
+          themes, captured by CI, with diff alerts on PRs.</li>
+        <li><strong>Live theme builder</strong> — an editor-style UI in <code>/admin</code> that
+          lets a non-developer try color combinations and export the resulting theme file.</li>
+        <li><strong>Component docs in Studio</strong> — short editor-facing notes on each block
+          type rendered next to the schema picker. Sanity Studio supports this via custom
+          input components but it's not wired up yet.</li>
+        <li><strong>Cross-browser visual matrix</strong> — current scope is "looks right in
+          Chrome on desktop and mobile"; firmer commitments would require a regression suite.</li>
+      </ul>
+      <p>
+        None of those block tomorrow's demo or future reskinning work — they're polish items
+        for when the design system needs to scale beyond a single product.
+      </p>
+    </section>
+
+    <footer class="rg-footer">
+      <p>
+        Companion pages: <a href="/admin/block-library">/admin/block-library</a> ·
+        <a href="/admin/platform-overview">/admin/platform-overview</a>
+      </p>
+      <p class="rg-footer__small">
+        Internal reference. Not indexed by search engines. URL is not access control.
+      </p>
+    </footer>
+  </div>
+</BaseLayout>
+
+<style>
+  @import '../../styles/global.css';
+
+  :global(.main-content:has(.rg-layout)) {
+    padding: 0;
+  }
+
+  .rg {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: var(--space-12) var(--container-padding) var(--space-16);
+    color: var(--color-text-primary);
+    font-family: var(--font-family-sans);
+    line-height: var(--line-height-relaxed);
+  }
+
+  .rg-header {
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--space-8);
+    margin-bottom: var(--space-10);
+  }
+
+  .rg-header__eyebrow {
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--neutral-new-600);
+    margin: 0 0 var(--space-3);
+  }
+
+  .rg-header__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-5xl);
+    margin: 0 0 var(--space-4);
+    color: var(--navy-900);
+    line-height: var(--line-height-tight);
+  }
+
+  .rg-header__lede {
+    font-size: var(--font-size-lg);
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-3);
+  }
+
+  .rg-header__companion {
+    font-size: var(--font-size-base);
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .rg-toc {
+    background: var(--neutral-new-50);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: var(--space-6) var(--space-7);
+    margin-bottom: var(--space-12);
+  }
+
+  .rg-toc__heading {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--neutral-new-600);
+    margin: 0 0 var(--space-3);
+  }
+
+  .rg-toc__list {
+    margin: 0;
+    padding-left: var(--space-6);
+  }
+
+  .rg-toc__list li {
+    margin-bottom: var(--space-2);
+  }
+
+  .rg-toc__list a {
+    color: var(--color-link);
+    text-decoration: none;
+  }
+
+  .rg-toc__list a:hover {
+    text-decoration: underline;
+  }
+
+  .rg-section {
+    margin-bottom: var(--space-12);
+    scroll-margin-top: var(--space-6);
+  }
+
+  .rg-section__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    margin: 0 0 var(--space-4);
+    color: var(--navy-900);
+    border-top: 3px solid var(--gold-500);
+    padding-top: var(--space-6);
+  }
+
+  .rg-section__subtitle {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin: var(--space-6) 0 var(--space-3);
+    color: var(--neutral-new-800);
+  }
+
+  .rg-section__where {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-4);
+  }
+
+  .rg-section p {
+    margin: 0 0 var(--space-3);
+  }
+
+  .rg-section :global(pre) {
+    margin: var(--space-4) 0;
+    border-radius: 8px;
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+  }
+
+  .rg-section code {
+    font-family: var(--font-family-mono);
+    font-size: 0.9em;
+    background: var(--neutral-new-100);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+
+  .rg-section :global(pre code) {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+  }
+
+  .rg-list {
+    margin: 0 0 var(--space-4);
+    padding-left: var(--space-6);
+  }
+
+  .rg-list li {
+    margin-bottom: var(--space-2);
+  }
+
+  .rg-callout {
+    background: var(--neutral-new-100);
+    border-left: 4px solid var(--gold-500);
+    padding: var(--space-4) var(--space-5);
+    margin: var(--space-6) 0;
+    font-size: var(--font-size-base);
+  }
+
+  .rg-layers {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: 1fr;
+    margin: var(--space-6) 0;
+  }
+
+  @media (min-width: 48rem) {
+    .rg-layers {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .rg-layer {
+    background: var(--neutral-new-50);
+    border: 1px solid var(--color-border);
+    border-top: 3px solid var(--navy-700);
+    border-radius: 6px;
+    padding: var(--space-5);
+  }
+
+  .rg-layer__num {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: var(--gold-500);
+    margin: 0 0 var(--space-2);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .rg-layer__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    color: var(--navy-900);
+    margin: 0 0 var(--space-2);
+    font-weight: 700;
+  }
+
+  .rg-layer__where {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-3);
+    word-break: break-all;
+  }
+
+  .rg-layer__desc {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  .rg-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--space-4) 0;
+    font-size: var(--font-size-sm);
+  }
+
+  .rg-table th,
+  .rg-table td {
+    text-align: left;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+  }
+
+  .rg-table th {
+    background: var(--neutral-new-100);
+    font-weight: 600;
+    color: var(--navy-900);
+  }
+
+  .rg-table td code {
+    word-break: break-word;
+  }
+
+  .rg-footer {
+    margin-top: var(--space-12);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+    color: var(--color-text-secondary);
+  }
+
+  .rg-footer p {
+    margin: 0 0 var(--space-2);
+  }
+
+  .rg-footer__small {
+    font-size: var(--font-size-xs);
+    color: var(--neutral-new-600);
+  }
+</style>

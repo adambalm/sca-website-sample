@@ -1,0 +1,53 @@
+---
+/**
+ * 404 Page — shown when no route matches.
+ *
+ * Prerendered so it exists as a static file and is not
+ * intercepted by the [...slug] catch-all route.
+ */
+export const prerender = true
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Page Not Found | Springfield Commonwealth Academy</title>
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #0d1b2a;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        text-align: center;
+      }
+      .container { max-width: 480px; padding: 2rem; }
+      h1 { font-size: 4rem; margin: 0 0 0.5rem; color: #C9A227; }
+      p { font-size: 1.125rem; line-height: 1.6; color: rgba(255,255,255,0.8); margin: 0 0 2rem; }
+      a {
+        display: inline-block;
+        padding: 0.75rem 2rem;
+        background: #C9A227;
+        color: #0d1b2a;
+        text-decoration: none;
+        font-weight: 600;
+        border-radius: 6px;
+      }
+      a:hover { background: #D4B43A; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>404</h1>
+      <p>The page you're looking for doesn't exist or has been moved.</p>
+      <a href="/">Back to Homepage</a>
+    </div>
+  </body>
+</html>

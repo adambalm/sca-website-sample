@@ -1,0 +1,619 @@
+---
+/**
+ * News Article Page - Dynamic route for individual news articles
+ *
+ * Fetches and renders a single news article by slug.
+ * Uses SSR (prerender=false) so newly imported articles are immediately available.
+ * Includes related articles (3 most recent, excluding current).
+ */
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PortableText from '../../components/PortableText.astro';
+import NewsCard from '../../components/NewsCard.astro';
+import { loadQuery } from '../../sanity/lib/load-query';
+import { urlFor, heroSrcSet, hotspotToPosition } from '../../sanity/lib/image';
+
+// SSR mode - no static paths needed, articles render on-demand
+export const prerender = false;
+
+// Get the slug from the URL
+const { slug } = Astro.params;
+
+// Fetch the article by slug
+const { data: article } = await loadQuery<any>({
+  query: `*[_type == "news" && slug.current == $slug][0] {
+    _id,
+    title,
+    slug,
+    date,
+    summary,
+    body,
+    image,
+    featured,
+    source,
+    externalUrl,
+    seo,
+    "attachments": attachments[]{
+      label,
+      "url": asset->url,
+      "originalFilename": asset->originalFilename,
+      "size": asset->size
+    }
+  }`,
+  params: { slug },
+});
+
+// 404 if article not found
+if (!article) {
+  return Astro.redirect('/404');
+}
+
+// Fetch related articles (3 most recent, excluding current)
+const { data: relatedArticles } = await loadQuery<any[]>({
+  query: `*[_type == "news" && _id != $currentId] | order(date desc)[0...3] {
+    _id,
+    title,
+    slug,
+    date,
+    summary,
+    featured,
+    image
+  }`,
+  params: { currentId: article._id },
+});
+
+// Format date
+const formattedDate = article.date
+  ? new Date(article.date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  : null;
+
+// SEO
+const pageTitle = article.seo?.title || article.title;
+const pageDescription = article.seo?.description || article.summary || `Read ${article.title} on Springfield Commonwealth Academy`;
+
+const hasImage = !!article.image;
+const articleOgImage = hasImage
+  ? urlFor(article.image).width(1200).height(630).auto('format').url()
+  : undefined;
+
+const articleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'NewsArticle',
+  headline: article.title,
+  description: article.summary || '',
+  datePublished: article.date,
+  ...(hasImage && { image: urlFor(article.image).width(1200).auto('format').url() }),
+  author: {
+    '@type': 'Organization',
+    name: 'Springfield Commonwealth Academy',
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'Springfield Commonwealth Academy',
+    logo: { '@type': 'ImageObject', url: 'https://www.springfieldcommonwealthacademy.org/images/scao-logo.png' },
+  },
+};
+---
+
+<BaseLayout title={pageTitle} description={pageDescription} ogImage={articleOgImage} schema={articleSchema}>
+  {/* Article Header - varies based on whether image exists */}
+  {hasImage ? (
+    <div class="nd-hero">
+      <img
+        src={urlFor(article.image).width(1600).auto('format').url()}
+        srcset={heroSrcSet(article.image)}
+        sizes="100vw"
+        alt={article.image.alt || article.title}
+        class="nd-hero__image"
+        style={`object-position: ${hotspotToPosition(article.image.hotspot)}`}
+        loading="eager"
+      />
+      <div class="nd-hero__overlay">
+        <div class="nd-hero__container">
+          <a href="/news" class="nd-hero__back">&larr; Back to News</a>
+          <div class="nd-hero__meta">
+            {formattedDate && (
+              <time datetime={article.date} class="nd-hero__date">{formattedDate}</time>
+            )}
+            {article.featured && (
+              <span class="nd-hero__badge">Featured</span>
+            )}
+          </div>
+          <h1 class="nd-hero__title">{article.title}</h1>
+          {article.summary && (
+            <p class="nd-hero__summary">{article.summary}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div class="nd-header">
+      <div class="nd-header__container">
+        <a href="/news" class="nd-header__back">&larr; Back to News</a>
+        <div class="nd-header__meta">
+          {formattedDate && (
+            <time datetime={article.date} class="nd-header__date">{formattedDate}</time>
+          )}
+          {article.featured && (
+            <span class="nd-header__badge">Featured</span>
+          )}
+        </div>
+        <h1 class="nd-header__title">{article.title}</h1>
+        {article.summary && (
+          <p class="nd-header__summary">{article.summary}</p>
+        )}
+      </div>
+    </div>
+  )}
+
+  {/* Article Body */}
+  {article.body && (
+    <article class="nd-body">
+      <PortableText value={article.body} />
+    </article>
+  )}
+
+  {/* Attachments */}
+  {article.attachments && article.attachments.length > 0 && (
+    <div class="nd-attachments">
+      <h2 class="nd-attachments__heading">Downloads</h2>
+      <ul class="nd-attachments__list">
+        {article.attachments.map((file: any) => (
+          <li class="nd-attachments__item">
+            <a href={file.url} download={file.originalFilename} class="nd-attachments__link">
+              <svg class="nd-attachments__icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 3v10m0 0l-3-3m3 3l3-3M4 15h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>{file.label || file.originalFilename}</span>
+              {file.size && (
+                <span class="nd-attachments__size">
+                  {file.size > 1048576
+                    ? `${(file.size / 1048576).toFixed(1)} MB`
+                    : `${Math.round(file.size / 1024)} KB`}
+                </span>
+              )}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+
+  {/* Source metadata */}
+  {article.source && article.source !== 'manual' && (
+    <div class="nd-meta">
+      <span class="nd-meta__label">Source</span>
+      {article.source === 'instagram' && <span>Instagram</span>}
+      {article.source === 'external' && article.externalUrl && (
+        <a href={article.externalUrl} target="_blank" rel="noopener noreferrer">External Source</a>
+      )}
+    </div>
+  )}
+
+  {/* Related Articles */}
+  {relatedArticles && relatedArticles.length > 0 && (
+    <section class="nd-related">
+      <div class="nd-related__container">
+        <h2 class="nd-related__heading">More News</h2>
+        <div class="nd-related__grid">
+          {relatedArticles.map((related: any) => (
+            <NewsCard article={related} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+</BaseLayout>
+
+<style>
+  @import '../../styles/global.css';
+
+  /* ===== Hero (with image) =====
+     Image fills container absolutely; overlay is in-flow so the hero grows
+     with its content. This prevents the meta row / title from being clipped
+     when the title wraps to two lines or the summary is long. */
+  .nd-hero {
+    position: relative;
+    background-color: var(--navy-900);
+  }
+
+  .nd-hero__image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .nd-hero__overlay {
+    position: relative;
+    background: linear-gradient(to top, rgba(10, 22, 40, 0.92) 0%, rgba(10, 22, 40, 0.45) 55%, rgba(10, 22, 40, 0.1) 100%);
+    display: flex;
+    align-items: flex-end;
+    min-height: 240px;
+  }
+
+  @media (min-width: 48rem) {
+    .nd-hero__overlay {
+      min-height: 380px;
+    }
+  }
+
+  @media (min-width: 80rem) {
+    .nd-hero__overlay {
+      min-height: 500px;
+    }
+  }
+
+  .nd-hero__container {
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+    padding: var(--space-8) var(--container-padding) var(--space-6);
+    width: 100%;
+  }
+
+  @media (min-width: 48rem) {
+    .nd-hero__container {
+      padding: var(--space-12) var(--container-padding) var(--space-8);
+    }
+  }
+
+  .nd-hero__back {
+    display: inline-block;
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    margin-bottom: var(--space-4);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .nd-hero__back:hover {
+    color: var(--color-text-inverse);
+  }
+
+  .nd-hero__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+
+  .nd-hero__date {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .nd-hero__badge {
+    padding: var(--space-1) var(--space-2);
+    background-color: var(--gold-500);
+    color: var(--navy-900);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: var(--border-radius-sm);
+  }
+
+  .nd-hero__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    color: var(--color-text-inverse);
+    line-height: 1.15;
+    margin: 0 0 var(--space-3);
+  }
+
+  .nd-hero__summary {
+    font-size: var(--font-size-base);
+    color: rgba(255, 255, 255, 0.95);
+    max-width: 55ch;
+    margin: 0;
+    line-height: var(--line-height-normal);
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  @media (min-width: 48rem) {
+    .nd-hero__title {
+      font-size: var(--font-size-4xl);
+    }
+
+    .nd-hero__summary {
+      font-size: var(--font-size-lg);
+      line-height: var(--line-height-relaxed);
+    }
+  }
+
+  /* ===== Header (no image fallback) — branded navy ===== */
+  .nd-header {
+    background: radial-gradient(ellipse at 30% 20%, rgba(30, 58, 95, 0.6) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(201, 162, 39, 0.08) 0%, transparent 40%),
+                var(--navy-800);
+    padding: var(--space-24) var(--container-padding) var(--space-12);
+    text-align: center;
+    min-height: 360px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .nd-header__container {
+    max-width: var(--max-width-content);
+    margin: 0 auto;
+  }
+
+  .nd-header__back {
+    display: inline-block;
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    margin-bottom: var(--space-4);
+  }
+
+  .nd-header__back:hover {
+    color: #ffffff;
+  }
+
+  .nd-header__meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+
+  .nd-header__date {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .nd-header__badge {
+    padding: var(--space-1) var(--space-2);
+    background-color: var(--gold-500);
+    color: var(--navy-900);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: var(--border-radius-sm);
+  }
+
+  .nd-header__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-3xl);
+    color: #ffffff;
+    line-height: 1.15;
+    margin: 0 0 var(--space-3);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .nd-header__summary {
+    font-size: var(--font-size-lg);
+    color: rgba(255, 255, 255, 0.75);
+    max-width: 55ch;
+    margin: 0 auto;
+    line-height: var(--line-height-relaxed);
+  }
+
+  @media (min-width: 48rem) {
+    .nd-header {
+      padding: var(--space-24) var(--container-padding) var(--space-14);
+      min-height: 400px;
+    }
+
+    .nd-header__title {
+      font-size: var(--font-size-4xl);
+    }
+  }
+
+  /* ===== Article Body ===== */
+  .nd-body {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--container-padding);
+    font-size: var(--font-size-base);
+    line-height: 1.7;
+    color: var(--neutral-new-800);
+  }
+
+  .nd-body :global(p) {
+    margin: 0 0 var(--space-4);
+  }
+
+  .nd-body :global(p:first-of-type) {
+    font-size: var(--font-size-lg);
+    color: var(--neutral-new-600);
+  }
+
+  .nd-body :global(h2) {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    color: var(--navy-800);
+    margin: var(--space-10) 0 var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--neutral-new-200);
+  }
+
+  .nd-body :global(h3) {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-xl);
+    color: var(--navy-700);
+    margin: var(--space-8) 0 var(--space-3);
+  }
+
+  .nd-body :global(a) {
+    color: var(--navy-600);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .nd-body :global(a:hover) {
+    color: var(--navy-800);
+  }
+
+  .nd-body :global(ul),
+  .nd-body :global(ol) {
+    margin: 0 0 var(--space-4);
+    padding-left: var(--space-6);
+  }
+
+  .nd-body :global(li) {
+    margin-bottom: var(--space-2);
+  }
+
+  .nd-body :global(blockquote) {
+    border-left: 4px solid var(--gold-500);
+    padding: var(--space-4) var(--space-6);
+    margin: var(--space-6) 0;
+    background: var(--neutral-new-50);
+    border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+    font-style: italic;
+  }
+
+  .nd-body :global(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--border-radius-md);
+    margin: var(--space-4) 0;
+  }
+
+  .nd-body :global(strong) {
+    font-weight: var(--font-weight-semibold);
+    color: var(--neutral-new-900);
+  }
+
+  @media (min-width: 48rem) {
+    .nd-body {
+      padding: var(--space-12) var(--container-padding);
+      font-size: var(--font-size-lg);
+    }
+  }
+
+  /* ===== Attachments ===== */
+  .nd-attachments {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 var(--container-padding) var(--space-8);
+  }
+
+  .nd-attachments__heading {
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--neutral-new-600);
+    margin: 0 0 var(--space-3);
+  }
+
+  .nd-attachments__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .nd-attachments__link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: var(--neutral-new-50);
+    border: 1px solid var(--neutral-new-200);
+    border-radius: var(--border-radius-sm);
+    color: var(--navy-700);
+    text-decoration: none;
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+
+  .nd-attachments__link:hover {
+    background: var(--neutral-new-100);
+    border-color: var(--navy-500);
+    color: var(--navy-800);
+  }
+
+  .nd-attachments__icon {
+    flex-shrink: 0;
+    color: var(--gold-500);
+  }
+
+  .nd-attachments__size {
+    margin-left: auto;
+    color: var(--neutral-new-600);
+    font-size: var(--font-size-xs);
+  }
+
+  /* ===== Source Metadata ===== */
+  .nd-meta {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 var(--container-padding) var(--space-8);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-sm);
+    color: var(--neutral-new-600);
+  }
+
+  .nd-meta__label {
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: var(--font-size-xs);
+    margin-right: var(--space-2);
+  }
+
+  .nd-meta a {
+    color: var(--navy-600);
+  }
+
+  /* ===== Related Articles ===== */
+  .nd-related {
+    background-color: var(--neutral-new-100);
+    padding: var(--space-12) 0;
+    margin-top: var(--space-8);
+  }
+
+  .nd-related__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+    padding: 0 var(--container-padding);
+  }
+
+  .nd-related__heading {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-2xl);
+    color: var(--navy-900);
+    margin: 0 0 var(--space-8);
+  }
+
+  .nd-related__grid {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 48rem) {
+    .nd-related__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .nd-related__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

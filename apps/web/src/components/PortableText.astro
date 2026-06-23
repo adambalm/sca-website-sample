@@ -1,0 +1,25 @@
+---
+/**
+ * PortableText — Renders Sanity Portable Text content.
+ *
+ * Wraps astro-portabletext with custom type handlers for
+ * Sanity-specific block types (images).
+ */
+import { PortableText as AstroPortableText } from 'astro-portabletext'
+import PortableTextImage from './PortableTextImage.astro'
+
+interface Props {
+  value: any[]
+}
+
+const { value } = Astro.props
+---
+
+<AstroPortableText
+  value={value}
+  components={{
+    type: {
+      image: PortableTextImage,
+    },
+  }}
+/>

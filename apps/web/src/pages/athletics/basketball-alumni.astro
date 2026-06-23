@@ -1,0 +1,246 @@
+---
+/**
+ * Basketball Alumni — Full Outcomes List
+ *
+ * Table listing of SCA basketball alumni and the colleges they attended.
+ * Entries flagged with needsCoachReview are excluded from display.
+ * SSR: updates immediately when editors publish in Sanity.
+ */
+export const prerender = false;
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHero from '../../components/PageHero.astro';
+import CtaBanner from '../../components/sections/CtaBanner.astro';
+import { loadQuery } from '../../sanity/lib/load-query';
+
+let alumni: any[] = [];
+let fetchError = false;
+
+try {
+  const result = await loadQuery<any[]>({
+    query: `*[_type == "alumniStory" && sport == "basketball" && needsCoachReview != true]
+      | order(graduationYear desc, name asc) {
+      _id, name, university, graduationYear, externalUrl
+    }`,
+  });
+  alumni = result.data || [];
+} catch (e) {
+  fetchError = true;
+}
+
+// Group by graduation year for table sections
+const grouped = new Map<number, any[]>();
+for (const entry of alumni) {
+  const year = entry.graduationYear || 0;
+  if (!grouped.has(year)) grouped.set(year, []);
+  grouped.get(year)!.push(entry);
+}
+const sortedYears = [...grouped.keys()].sort((a, b) => b - a);
+---
+
+<BaseLayout
+  title="Basketball Alumni"
+  description="Springfield Commonwealth Academy basketball alumni and the colleges they went on to attend."
+  containerClass="ba-layout"
+>
+  <PageHero>
+    <h1 class="ba-hero__title">Basketball Alumni</h1>
+    <p class="ba-hero__intro">
+      SCA graduates competing at the collegiate level and beyond.
+    </p>
+  </PageHero>
+
+  <div class="ba-roster__container">
+    <nav class="ba-roster__back">
+      <a href="/athletics/basketball">&larr; Basketball Program</a>
+    </nav>
+
+    {fetchError ? (
+      <p class="ba-roster__error">Unable to load alumni data. Please try again later.</p>
+    ) : alumni.length === 0 ? (
+      <p class="ba-roster__empty">No alumni records available yet.</p>
+    ) : (
+      <div class="ba-roster__table-wrap">
+        <table class="ba-roster__table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>College</th>
+              <th>Class</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedYears.map(year => (
+              grouped.get(year)!.map((entry: any, i: number) => (
+                <tr>
+                  <td>
+                    {entry.externalUrl ? (
+                      <a href={entry.externalUrl} target="_blank" rel="noopener noreferrer" class="ba-roster__link">
+                        {entry.name}
+                      </a>
+                    ) : (
+                      <span>{entry.name}</span>
+                    )}
+                  </td>
+                  <td>{entry.university || '\u2014'}</td>
+                  <td>{year === 0 ? '\u2014' : year}</td>
+                </tr>
+              ))
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+  </div>
+
+  <CtaBanner
+    section={{
+      heading: 'Learn About Our Program',
+      subtitle: 'Meet Coach Bergeron and see how SCA prepares student-athletes for the next level.',
+      variant: 'navy',
+      primaryCta: { label: 'Basketball Program', href: '/athletics/basketball' },
+      secondaryCta: { label: 'Apply to SCA', href: '/admissions' },
+    }}
+    headingLevel="h2"
+  />
+</BaseLayout>
+
+<style>
+  @import '../../styles/global.css';
+
+  :global(.main-content:has(.ba-layout)) {
+    padding: 0;
+  }
+
+  .ba-hero__title {
+    font-family: var(--font-family-heading);
+    font-size: var(--font-size-4xl);
+    color: #ffffff;
+    margin: 0 0 var(--space-4);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .ba-hero__intro {
+    font-size: var(--font-size-lg);
+    color: #ffffff;
+    margin: 0 auto;
+    line-height: var(--line-height-relaxed);
+    max-width: 50ch;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  @media (min-width: 48rem) {
+    .ba-hero__title {
+      font-size: var(--font-size-5xl);
+    }
+  }
+
+  .ba-roster__container {
+    max-width: var(--max-width-full);
+    margin: 0 auto;
+    padding: var(--space-12) var(--container-padding);
+  }
+
+  .ba-roster__back {
+    margin: 0 0 var(--space-6);
+  }
+
+  .ba-roster__back a {
+    color: var(--navy-700, #1e3a5f);
+    text-decoration: none;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+  }
+
+  .ba-roster__back a:hover {
+    color: var(--gold-500, #c9a227);
+  }
+
+  .ba-roster__error {
+    text-align: center;
+    color: var(--color-error, #b91c1c);
+    padding: var(--space-12) 0;
+    font-weight: 500;
+  }
+
+  .ba-roster__empty {
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: var(--space-12) 0;
+  }
+
+  .ba-roster__table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--border-radius-lg, 12px);
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
+  }
+
+  .ba-roster__table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: var(--font-size-sm);
+  }
+
+  .ba-roster__table thead {
+    background: #0d1b2a;
+    color: #ffffff;
+  }
+
+  .ba-roster__table th {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    font-weight: 600;
+    font-size: var(--font-size-xs, 0.75rem);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    background: #0d1b2a;
+    color: #ffffff;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .ba-roster__table td {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--neutral-new-200, #e5e7eb);
+    vertical-align: middle;
+  }
+
+  .ba-roster__table tbody tr:nth-child(even) {
+    background: #eef1f5;
+  }
+
+  .ba-roster__table tbody tr:hover {
+    background: #e2e6ec;
+  }
+
+  .ba-roster__table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .ba-roster__link {
+    color: var(--navy-700, #1e3a5f);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .ba-roster__link:hover {
+    color: var(--gold-500, #c9a227);
+  }
+
+  /* Class column — narrow and centered */
+  .ba-roster__table th:last-child,
+  .ba-roster__table td:last-child {
+    text-align: center;
+    white-space: nowrap;
+    width: 5rem;
+  }
+
+</style>
