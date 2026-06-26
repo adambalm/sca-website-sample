@@ -14,7 +14,7 @@
 | Preview | `…-git-preview-…vercel.app` | Vercel preview env. Sync with `git push origin master:preview`. |
 | Studio | `your-project.sanity.studio` | `cd apps/sca-studio && npx sanity deploy` |
 
-**Git author constraint:** commits must be authored by `Ed O'Connell <espoconnell@gmail.com>` or Vercel rejects the push.
+**Git author constraint:** commits must be authored by `Ed O'Connell <[redacted]>` or Vercel rejects the push.
 
 ---
 

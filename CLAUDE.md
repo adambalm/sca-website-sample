@@ -51,7 +51,7 @@ Planning documents go stale within a single session. These rules are mandatory.
 > **For current platform state** (domains, plan tier, billing, env vars, deployment topology): read `platform-state.yml` at project root. If the file is missing or stale, run `/verify-platform-state` to regenerate it from live Vercel/DNS queries. Do NOT hardcode platform facts in documentation — they change. The YAML is the single source of truth.
 
 **Immutable facts** (these don't change with platform state):
-- **Git author:** Must be `Ed O'Connell <espoconnell@gmail.com>` — Vercel blocks deploys from unrecognized authors.
+- **Git author:** Must be `Ed O'Connell <[redacted]>` — Vercel blocks deploys from unrecognized authors.
 - **Framework:** Astro 5.0 with `@astrojs/vercel` adapter (NOT Next.js).
 - **Vercel Root Directory:** `apps/web` (set in Vercel dashboard for `sca-website` project).
 - **Studio:** `https://your-project.sanity.studio/`

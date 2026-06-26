@@ -132,7 +132,7 @@ Append-only log of significant decisions. Agents draft entries during sessions; 
 
 **Decision:** Production (`sca-website`) is now Git-backed — every push to `master` triggers an automatic Vercel deploy. Staging (`web`) remains CLI-deployed for visual editing preview.
 
-**Consequence:** ADR-002 is superseded for production. `vercel --prod` from `apps/web` still deploys the staging environment. Git author must be `Ed O'Connell <espoconnell@gmail.com>` — Vercel blocks deploys from unrecognized authors.
+**Consequence:** ADR-002 is superseded for production. `vercel --prod` from `apps/web` still deploys the staging environment. Git author must be `Ed O'Connell <[redacted]>` — Vercel blocks deploys from unrecognized authors.
 
 ---
 

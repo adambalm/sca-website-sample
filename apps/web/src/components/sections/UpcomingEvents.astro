@@ -11,10 +11,17 @@ const { section, headingLevel } = Astro.props
 const HeadingTag = headingLevel as any
 
 const category = section.filterByCategory || ''
-const maxEvents = section.maxEvents || 6
+// Clamp to a safe integer 1..50 (default 6) and strip GROQ string-literal
+// metacharacters from the category before interpolating. Both values come from
+// CMS-controlled section props, not request input — this is defense-in-depth.
+const maxEvents =
+  Number.isInteger(section.maxEvents) && section.maxEvents >= 1 && section.maxEvents <= 50
+    ? section.maxEvents
+    : 6
+const safeCategory = String(category).replace(/["\\]/g, '')
 
 // Single GROQ query resolves events → program → coach in one fetch
-const categoryFilter = category ? `&& category == "${category}"` : ''
+const categoryFilter = safeCategory ? `&& category == "${safeCategory}"` : ''
 const { data: events } = await loadQuery<any[]>({
   query: `*[_type == "event" && startDate > now() ${categoryFilter}] | order(startDate asc) [0...${maxEvents}] {
     _id,
